@@ -1,0 +1,195 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 83,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 88,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 89,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 90,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 91,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 92,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 93,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 94,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "/home/umut/TxnSP/lib",
+			"paths" : 
+			[
+				"libtxnsp.so.1.0.0"
+			],
+			"targetId" : "txnsp::@6890427a1f51a3e7e1df",
+			"targetIndex" : 0,
+			"targetInstallNamelink" : "skip",
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "/home/umut/TxnSP/lib",
+			"paths" : 
+			[
+				"libtxnsp.so"
+			],
+			"targetId" : "txnsp::@6890427a1f51a3e7e1df",
+			"targetIndex" : 0,
+			"targetInstallNamelink" : "only",
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "/home/umut/TxnSP/include",
+			"paths" : 
+			[
+				"include/TxnSPLib.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include",
+			"paths" : 
+			[
+				"include/TxnSPTest.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/PoolingModels",
+			"paths" : 
+			[
+				"include/PoolingModels/SchedulePool.h",
+				"include/PoolingModels/SubsetPool.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/ProblemModels",
+			"paths" : 
+			[
+				"include/ProblemModels/Problem.h",
+				"include/ProblemModels/Schedule.h",
+				"include/ProblemModels/Subset.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/Shared",
+			"paths" : 
+			[
+				"include/Shared/Decode.h",
+				"include/Shared/List.h",
+				"include/Shared/Math.h",
+				"include/Shared/Parameters.h",
+				"include/Shared/Random.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 6,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/Solvers",
+			"paths" : 
+			[
+				"include/Solvers/DPSolver.h",
+				"include/Solvers/ESSolver.h",
+				"include/Solvers/MIPSolver.h",
+				"include/Solvers/SASolver.h",
+				"include/Solvers/Solver.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 7,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/Structs",
+			"paths" : 
+			[
+				"include/Structs/AnalyzerInput.h",
+				"include/Structs/EvaluatorInput.h",
+				"include/Structs/SolverInput.h",
+				"include/Structs/SolverOutput.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 8,
+			"component" : "Headers",
+			"destination" : "/home/umut/TxnSP/include/Testers",
+			"paths" : 
+			[
+				"include/Testers/Analyzer.h"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	}
+}
