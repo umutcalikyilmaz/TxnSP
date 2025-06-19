@@ -1,66 +1,67 @@
-#include <PoolingModels/SubsetPool.h>
+#include "TxnSP/PoolingModels/SubsetPool.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    SubsetPool::SubsetPool(int size, int max, SchedulePool* schp) : psize(size), inUse(0), schp(schp), subsets(max) { }
+    SubsetPool::SubsetPool(int problemSize, int max, SchedulePool* schedulePool) : problemSize_(problemSize), inUse_(0),
+    schedulePool_(schedulePool), subsets_(max) { }
 
-    Subset* SubsetPool::GetSubset(int psize, int size, int schNum, Schedule** sch)
+    Subset* SubsetPool::getSubset(int size, int scheduleNumber, Schedule** schedule)
     {
-        inUse++;
+        inUse_++;
         Subset* res;
 
-        if(ssQueue.empty())
+        if(subsetQueue_.empty())
         {
-            res = new Subset(psize, size, schNum, sch, schp);
-            subsets.push_back(res);
+            res = new Subset(problemSize_, size, scheduleNumber, schedule, schedulePool_);
+            subsets_.push_back(res);
         }
         else
         {
-            res = ssQueue.front();
-            ssQueue.pop();
-            res->Change(psize, size, schNum, sch);
+            res = subsetQueue_.front();
+            subsetQueue_.pop();
+            res->change(problemSize_, size, scheduleNumber, schedule);
         }
 
         return res;
     }
 
-    Subset* SubsetPool::GetSubset(int psize, int size, int schNum, Schedule** sch, double makespan)
+    Subset* SubsetPool::getSubset(int size, int schNum, Schedule** sch, double makespan)
     {
-        inUse++;
+        inUse_++;
         Subset* res;
 
-        if(ssQueue.empty())
+        if(subsetQueue_.empty())
         {
-            res = new Subset(psize, size, schNum, sch, makespan, schp);
-            subsets.push_back(res);
+            res = new Subset(problemSize_, size, schNum, sch, makespan, schedulePool_);
+            subsets_.push_back(res);
         }
         else
         {
-            res = ssQueue.front();
-            ssQueue.pop();
-            res->Change(psize, size, schNum, makespan, sch);
+            res = subsetQueue_.front();
+            subsetQueue_.pop();
+            res->change(size, schNum, makespan, sch);
         }
 
         return res;
     }
 
-    void SubsetPool::ReturnSubset(Subset* ss)
+    void SubsetPool::returnSubset(Subset* subset)
     {
-        inUse--;
-        ssQueue.push(ss);
+        inUse_--;
+        subsetQueue_.push(subset);
     }
 
     SubsetPool::~SubsetPool()
     {
-        while (ssQueue.empty())
+        while (subsetQueue_.empty())
         {
-            ssQueue.pop();
+            subsetQueue_.pop();
         }
 
-        while (!subsets.empty())
+        while (!subsets_.empty())
         {
-            delete subsets.back();
-            subsets.pop_back();
+            delete subsets_.back();
+            subsets_.pop_back();
         }
     }
 }

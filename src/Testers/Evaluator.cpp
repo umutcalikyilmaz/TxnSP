@@ -1,24 +1,28 @@
-#include <Testers/Evaluator.h>
+#include "TxnSP/Testers/Evaluator.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     void ThreadFunction(Problem** problems, int prbNum, bool es, bool mip, bool dp_exact, bool dp_approximate,
     const std::vector<std::pair<TemperatureEvolution,double>> SA_DecrementTypesAndParameters, 
     const std::vector<double> SA_MaxTemperatures, double* dpeTime, double* dpeVal, double* dpaTime, double* dpaVal,
     double* esTime, double* esVal, double* mipTime, double* mipVal, double** saTime, double** saVal)
     {
+        
         DPSolver dps;
         ESSolver ess;
-        MIPSolver mips;
         SASolver sas;
-        SolverInput inp;
+        SolverInput inp;    
+
+        #ifdef ENABLE_MIP
+            MIPSolver mips;
+        #endif
 
         if(es)
         {
             for(int i = 0; i < prbNum; i++)
             {                
                 inp.prb = problems[i];
-                SolverOutput* out = ess.Solve(inp);
+                SolverOutput* out = ess.solve(inp);
                 esTime[i] = out->runtime;
                 esVal[i] = out->makespan;
 
@@ -26,18 +30,21 @@ namespace TransactionScheduling
             }
         }
 
-        if(mip)
-        {
-            for(int i = 0; i < prbNum; i++)
-            {                
-                inp.prb = problems[i];
-                SolverOutput* out = mips.Solve(inp);
-                mipTime[i] = out->runtime;
-                mipVal[i] = out->makespan;
+        #ifdef ENABLE_MIP
+            if(mip)
+            {
+                for(int i = 0; i < prbNum; i++)
+                {                
+                    inp.prb = problems[i];
+                    SolverOutput* out = mips.solve(inp);
+                    mipTime[i] = out->runtime;
+                    mipVal[i] = out->makespan;
 
-                delete out;
+                    delete out;
+                }
             }
-        }
+        #endif
+        
 
         if(dp_exact)
         {
@@ -46,7 +53,7 @@ namespace TransactionScheduling
             for(int i = 0; i < prbNum; i++)
             {                
                 inp.prb = problems[i];
-                SolverOutput* out = dps.Solve(inp);
+                SolverOutput* out = dps.solve(inp);
                 dpeTime[i] = out->runtime;
                 dpeVal[i] = out->makespan;
 
@@ -61,7 +68,7 @@ namespace TransactionScheduling
             for(int i = 0; i < prbNum; i++)
             {                
                 inp.prb = problems[i];
-                SolverOutput* out = dps.Solve(inp);
+                SolverOutput* out = dps.solve(inp);
                 dpaTime[i] = out->runtime;
                 dpaVal[i] = out->makespan;
 
@@ -83,7 +90,7 @@ namespace TransactionScheduling
                 for(int i = 0; i < prbNum; i++)
                 {
                     inp.prb = problems[i];
-                    SolverOutput* out = sas.Solve(inp);
+                    SolverOutput* out = sas.solve(inp);
                     saTime[c][i] = out->runtime;
                     saVal[c][i] = out->makespan;
 
@@ -95,11 +102,11 @@ namespace TransactionScheduling
         }
     }
 
-    void Evaluator::EvaluatePreset(const EvaluatorInput& inp)
+    void Evaluator::evaluatePreset(const EvaluatorInput& inp)
     {
-        int nNum = inp.nValues.size();
-        int mNum = inp.mValues.size();
-        int cpNum = inp.cps.size();
+        int nNum = inp.jobNumbers.size();
+        int mNum = inp.machineNumbers.size();
+        int cpNum = inp.conflictParities.size();
         int uniformNum = inp.uniformParameters.size();
         int normalNum = inp.normalParameters.size();
         int distSize = uniformNum + normalNum;
@@ -428,15 +435,15 @@ namespace TransactionScheduling
         delete[] totSaDiff;
     }
 
-    void Evaluator::EvaluateRandom(const EvaluatorInput& inp)
+    void Evaluator::evaluateRandom(const EvaluatorInput& inp)
     {
-        int nNum = inp.nValues.size();
-        int mNum = inp.mValues.size();
-        int cpNum = inp.cps.size();
+        int nNum = inp.jobNumbers.size();
+        int mNum = inp.machineNumbers.size();
+        int cpNum = inp.conflictParities.size();
         int uniformNum = inp.uniformParameters.size();
         int normalNum = inp.normalParameters.size();
         int distSize = uniformNum + normalNum;
-        int prbNum = inp.prbNum;
+        int prbNum = inp.problemNumber;
         int threadCount = inp.threadCount;
         int prbConfNum = nNum * mNum * cpNum * distSize;
         int totPrbNum = prbNum * prbConfNum;
@@ -572,7 +579,7 @@ namespace TransactionScheduling
 
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.nValues[i], inp.mValues[j], inp.uniformParameters[l].first, inp.uniformParameters[l].second, inp.cps[k], UniformDistribution);
+                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], UniformDistribution, inp.uniformParameters[l].first, inp.uniformParameters[l].second, inp.conflictParities[k]);
                             thProblems[threadInd][count] = problems[c][m];
                             prbInds[threadInd][count] = c;
                             count++;
@@ -594,7 +601,7 @@ namespace TransactionScheduling
 
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.nValues[i], inp.mValues[j], inp.normalParameters[l].first, inp.normalParameters[l].second, inp.cps[k], NormalDistribution);
+                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], NormalDistribution, inp.normalParameters[l].first, inp.normalParameters[l].second, inp.conflictParities[k]);
                             thProblems[threadInd][count] = problems[c][m];
                             prbInds[threadInd][count] = c;
                             count++;
@@ -745,8 +752,8 @@ namespace TransactionScheduling
                 {
                     for(int k = 0; k < cpNum; k++)
                     {
-                        sstream << inp.directory << "/" << inp.nValues[i] << "_" << inp.mValues[j] << "_u_" << 
-                        inp.uniformParameters[l].first << "_" << inp.uniformParameters[l].second << "_" << inp.cps[k] << "_" 
+                        sstream << inp.directory << "/" << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_u_" << 
+                        inp.uniformParameters[l].first << "_" << inp.uniformParameters[l].second << "_" << inp.conflictParities[k] << "_" 
                         << prbNum << ".csv";
 
                         files[c].open(sstream.str(), fstream::out | fstream::trunc);
@@ -816,8 +823,8 @@ namespace TransactionScheduling
                 {
                     for(int k = 0; k < cpNum; k++)
                     {
-                        sstream << "../data/Evaluator/" << inp.nValues[i] << "_" << inp.mValues[j] << "_n_" << 
-                        inp.normalParameters[l].first << "_" << inp.normalParameters[l].second << "_" << inp.cps[k] << "_" 
+                        sstream << "../data/Evaluator/" << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_n_" << 
+                        inp.normalParameters[l].first << "_" << inp.normalParameters[l].second << "_" << inp.conflictParities[k] << "_" 
                         << prbNum << ".csv";
 
                         files[c].open(sstream.str(), fstream::out | fstream::trunc);
@@ -953,8 +960,15 @@ namespace TransactionScheduling
         delete[] totSaDiff;
     }
 
-    void Evaluator::Evaluate(const EvaluatorInput& inp)
+    void Evaluator::evaluate(const EvaluatorInput& inp)
     {
+        #ifndef ENABLE_MIP
+            if(inp.mip)
+            {
+                throw std::runtime_error("MIPSolver is not available in this build. Rebuild with -DENABLE_MIP=ON to use the MIPSolver");
+            }
+        #endif
+
         if(inp.baseline == SA)
         {
             throw "Simulated Annealing solutions cannot be used as baselines.";
@@ -962,11 +976,11 @@ namespace TransactionScheduling
 
         if(inp.preset)
         {
-            EvaluatePreset(inp);
+            evaluatePreset(inp);
         }
         else
         {
-            EvaluateRandom(inp);
+            evaluateRandom(inp);
         }
     }
 }

@@ -1,17 +1,23 @@
-#include <Solvers/MIPSolver.h>
+#include "TxnSP/Solvers/MIPSolver.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    SolverOutput* MIPSolver::Solve(const SolverInput& input)
+    SolverOutput* MIPSolver::solve(const SolverInput& input)
     {
 		double beg = std::chrono::steady_clock::now().time_since_epoch().count();
-
         Problem* prb = input.prb;
+
+		if(prb->getJobNumber() <= prb->getMachineNumber())
+        {
+            double end = std::chrono::steady_clock::now().time_since_epoch().count();
+            SolverOutput* res = new SolverOutput(prb, (end - beg) / 1000000000);
+        }
+
         double M = 0;        
-		int n = prb->GetN();
-		int m = prb->GetM();
-        double* T = prb->GetT();
-        bool** conf = prb->GetConf();
+		int n = prb->getJobNumber();
+		int m = prb->getMachineNumber();
+        double* T = prb->getLengths();
+        bool** conf = prb->getConflicts();
 
 		for (int i = 0; i < n; i++)
 		{

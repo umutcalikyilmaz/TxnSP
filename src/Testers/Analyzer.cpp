@@ -1,20 +1,20 @@
-#include <Testers/Analyzer.h>
+#include "TxnSP/Testers/Analyzer.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     void ThreadFunction(Problem** problems, int n, int m, int prbNum, double* spaceSizes, double* optNums, double* per1, double* per5, double* per10, double* per20)
     {
         int* perm = new int[n];
 		int* a = new int[n];
-        __uint128_t size = problems[0]->GetSize();
+        __uint128_t size = problems[0]->getSize();
 
         for(int i = 0; i < prbNum; i++)
         {
             Problem* prb = problems[i];            
             SchedulePool schp(n, m, 1);
                        
-            Schedule* sch = schp.GetSchedule(prb, 0, perm, a);
-            double opt = (double)((__uint128_t)(1000000 * sch->GetMakespan())) / 1000000;
+            Schedule* sch = schp.getSchedule(prb, 0, perm, a);
+            double opt = (double)((__uint128_t)(1000000 * sch->getMakespan())) / 1000000;
             set<double> valueSet{ opt };
             map<double,int> countMap;
             countMap[opt] = 1;
@@ -22,9 +22,9 @@ namespace TransactionScheduling
 
             for(__uint128_t j = 1; j < size; j++)
             {
-                schp.ReturnSchedule(sch);
-                sch = schp.GetSchedule(prb, j, perm, a);
-                double ms = (double)((__uint128_t)(1000000 * sch->GetMakespan())) / 1000000;
+                schp.returnSchedule(sch);
+                sch = schp.getSchedule(prb, j, perm, a);
+                double ms = (double)((__uint128_t)(1000000 * sch->getMakespan())) / 1000000;
 
                 if(valueSet.find(ms) == valueSet.end())
                 {
@@ -86,19 +86,19 @@ namespace TransactionScheduling
         delete[] a;
     }
 
-    void Analyzer::Analyze(const AnalyzerInput& inp)
+    void Analyzer::analyze(const AnalyzerInput& inp)
     {        
-        double para1 = inp.para1;
-        double para2 = inp.para2;
-        double cpStep = inp.cpStepSize;
-        int prbNum = inp.prbNum;
+        double para1 = inp.distributionParameter1;
+        double para2 = inp.distributionParameter2;
+        double cpStep = inp.conflictParityStepSize;
+        int prbNum = inp.problemNumber;
         int stepNum = 1 + (int)(1 / cpStep);
         int totPrbNum = prbNum * (stepNum);
-        int n = inp.n;
-        int m = inp.m;
+        int n = inp.jobNumber;
+        int m = inp.machineNumber;
         int threadCount = inp.threadCount;
         int threadStep = totPrbNum / threadCount;
-        Distribution dist = inp.dist;
+        ProbabilityDistribution dist = inp.distribution;
         
         SchedulePool schp(n, m, 1);
         thread* threads = new thread[threadCount];
@@ -151,7 +151,7 @@ namespace TransactionScheduling
 
             for(int i = 0; i < prbNum; i++)
             {
-                problems[c][i] = new Problem(n, m, para1, para2, cp, dist);
+                problems[c][i] = new Problem(n, m, dist, para1, para2, cp);
                 thProblems[threadInd][count] = problems[c][i];
                 count++;    
 
@@ -172,7 +172,7 @@ namespace TransactionScheduling
             }
         }
 
-        double prbSize = (double)problems[0][0]->GetSize();
+        double prbSize = (double)problems[0][0]->getSize();
 
         for(int i = 0; i < threadCount; i++)
         {

@@ -1,77 +1,83 @@
-#include <Solvers/SASolver.h>
+#include "TxnSP/Solvers/SASolver.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-	void SASolver::DecrementExponential()
+	void SASolver::decrementExponential()
 	{
-		T *= decrementParameter;		
+		T_ *= decrementParameter_;		
 	}
 
-    void SASolver::DecrementLinear()
+    void SASolver::decrementLinear()
 	{
-		T -= decrementParameter;
+		T_ -= decrementParameter_;
 	}
 
-    void SASolver::DecrementSlow()
+    void SASolver::decrementSlow()
 	{
-		T = T / (1 + decrementParameter * T);
+		T_ = T_ / (1 + decrementParameter_ * T_);
 	}
 
-    void SASolver::Permute(int* list, int ind1, int ind2)
+    void SASolver::permute(int* list, int ind1, int ind2)
 	{
 		int temp = list[ind1];
 		list[ind1] = list[ind2];
 		list[ind2] = temp;
 	}
 
-    void SASolver::Randomize(int size, int* ind1, int* ind2)
+    void SASolver::randomize(int size, int* ind1, int* ind2)
 	{
-		(*ind1) = rnd->Generate();
+		(*ind1) = rnd_->generate();
 
 		do
 		{
-			(*ind2) = rnd->Generate();
+			(*ind2) = rnd_->generate();
 		} 
 		while ((*ind1) == (*ind2));
 	}
 
-	void SASolver::Randomize(int* list, int size)
+	void SASolver::randomize(int* list, int size)
 	{
 		int ind1;
 		int ind2;
-		Randomize(size, &ind1, &ind2);
-		Permute(list, ind1, ind2);
+		randomize(size, &ind1, &ind2);
+		permute(list, ind1, ind2);
 	}
 
-    SolverOutput* SASolver::Solve(const SolverInput& input)
+    SolverOutput* SASolver::solve(const SolverInput& input)
     {
 		double beg = std::chrono::steady_clock::now().time_since_epoch().count();
-
         Problem* prb = input.prb;
-        int n = prb->GetN();
-		int m = prb->GetM();		
-		__uint128_t size = prb->GetSize();
+
+		if(prb->getJobNumber() <= prb->getMachineNumber())
+        {
+            double end = std::chrono::steady_clock::now().time_since_epoch().count();
+            return new SolverOutput(prb, (end - beg) / 1000000000);
+        }
+
+        int n = prb->getJobNumber();
+		int m = prb->getMachineNumber();		
+		__uint128_t size = prb->getSize();
 
 		switch (input.SA_DecrementType)
 		{
 		case Exponential:
-			decrementPtr = &SASolver::DecrementExponential;
+			decrementPtr_ = &SASolver::decrementExponential;
 			break;
 		case Linear:
-			decrementPtr = &SASolver::DecrementLinear;
+			decrementPtr_ = &SASolver::decrementLinear;
 			break;
 		case Slow:
-			decrementPtr = &SASolver::DecrementSlow;
+			decrementPtr_ = &SASolver::decrementSlow;
 			break;
 		}
 
 		SchedulePool schp(n, m, 2);
         int* state = new int[n];
         int* bestState = new int[n];
-        prob = new UniformRandomDoubleGenerator(0, 1);
-        rnd = new UniformRandomIntGenerator(0, n - 1);
-		T = input.SA_MaxTemperature;
-		decrementParameter = input.SA_DecrementParameter;
+        prob_ = new UniformRandomDoubleGenerator(0, 1);
+        rnd_ = new UniformRandomIntGenerator(0, n - 1);
+		T_ = input.SA_MaxTemperature;
+		decrementParameter_ = input.SA_DecrementParameter;
 
 		int ind1;
 		int ind2;
@@ -87,22 +93,22 @@ namespace TransactionScheduling
 
         for (int i = 0; i < 3 * n; i++)
 		{
-			Randomize(state, n);
+			randomize(state, n);
 		}
 
-        Copy(state, bestState, n);
+        copy(state, bestState, n);
 
-        Schedule* sch = schp.GetSchedule(prb, state);
-		cost = sch->GetMakespan();
+        Schedule* sch = schp.getSchedule(prb, state);
+		cost = sch->getMakespan();
 		bestCost = cost;
 
-		while (T > 0.000001)
+		while (T_ > 0.000001)
 		{
-			Randomize(n, &ind1, &ind2);
-			Permute(state, ind1, ind2);
-			schp.ReturnSchedule(sch);
-			sch = schp.GetSchedule(prb, state);
-			tempCost = sch->GetMakespan();
+			randomize(n, &ind1, &ind2);
+			permute(state, ind1, ind2);
+			schp.returnSchedule(sch);
+			sch = schp.getSchedule(prb, state);
+			tempCost = sch->getMakespan();
 
 			if (tempCost < cost)
 			{
@@ -111,13 +117,13 @@ namespace TransactionScheduling
 				if(cost < bestCost)
 				{
 					bestCost = cost;
-					Copy(state, bestState, n);
+					copy(state, bestState, n);
 				}				
 			}
 			else
 			{
-				double p = prob->Generate();
-				double pp = exp((cost - tempCost) / T);
+				double p = prob_->generate();
+				double pp = exp((cost - tempCost) / T_);
 
 				if (p < pp)
 				{
@@ -125,23 +131,20 @@ namespace TransactionScheduling
 				}
 				else
 				{
-					Permute(state, ind1, ind2);
+					permute(state, ind1, ind2);
 				}
 			}
 
-			(this->*decrementPtr)();
+			(this->*decrementPtr_)();
 		}
 
 		double end = std::chrono::steady_clock::now().time_since_epoch().count();
-
-		Schedule* bestSch = schp.GetSchedule(prb, bestState);
-		SolverOutput* res = new SolverOutput(prb, bestSch, (end - beg) / 1000000000);
-		schp.ReturnSchedule(bestSch);
+		SolverOutput* res = new SolverOutput(prb, bestState, (end - beg) / 1000000000);
 
 		delete[] state;
         delete[] bestState;
-        delete prob;
-        delete rnd;
+        delete prob_;
+        delete rnd_;
 
 		return res;
     }

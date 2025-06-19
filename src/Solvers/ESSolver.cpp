@@ -1,33 +1,39 @@
-#include <Solvers/ESSolver.h>
+#include "TxnSP/Solvers/ESSolver.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    SolverOutput* ESSolver::Solve(const SolverInput& input)
+    SolverOutput* ESSolver::solve(const SolverInput& input)
     {
 		double beg = std::chrono::steady_clock::now().time_since_epoch().count();
-
         Problem* prb = input.prb;
-        int n = prb->GetN();
-		int m = prb->GetM();		
-		__uint128_t size = prb->GetSize();
+
+		if(prb->getJobNumber() <= prb->getMachineNumber())
+        {
+            double end = std::chrono::steady_clock::now().time_since_epoch().count();
+            return new SolverOutput(prb, (end - beg) / 1000000000);
+        }
+
+        int n = prb->getJobNumber();
+		int m = prb->getMachineNumber();		
+		__uint128_t size = prb->getSize();
 
 		SchedulePool schp(n, m, 2);
 		int* perm = new int[n];
 		int* a = new int[n];
-		Schedule* ressch = schp.GetSchedule(prb, 0, perm, a);
-		Schedule* temp = schp.GetSchedule(ressch);
-		double makespan = ressch->GetMakespan();
+		Schedule* ressch = schp.getSchedule(prb, 0, perm, a);
+		Schedule* temp = schp.getSchedule(ressch);
+		double makespan = ressch->getMakespan();
 
 		for(__uint128_t i = 1; i < size; i++)
 		{
-			schp.ReturnSchedule(temp);
-			temp = schp.GetSchedule(prb, i, perm, a);
+			schp.returnSchedule(temp);
+			temp = schp.getSchedule(prb, i, perm, a);
 
-			if (temp->GetMakespan() < makespan)
+			if (temp->getMakespan() < makespan)
 			{
-				makespan = temp->GetMakespan();
-				schp.ReturnSchedule(ressch);
-				ressch = schp.GetSchedule(temp);
+				makespan = temp->getMakespan();
+				schp.returnSchedule(ressch);
+				ressch = schp.getSchedule(temp);
 			}
 		}
 

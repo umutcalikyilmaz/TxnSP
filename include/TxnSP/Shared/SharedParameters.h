@@ -1,8 +1,8 @@
 #pragma once
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    enum Distribution
+    enum ProbabilityDistribution
 	{
 		UniformDistribution,
 		NormalDistribution
@@ -21,6 +21,8 @@ namespace TransactionScheduling
 		Slow
 	};
 
+
+	#ifdef ENABLE_MIP
 	enum SolverType
 	{
 		DP,
@@ -28,4 +30,13 @@ namespace TransactionScheduling
 		MIP,
 		SA
 	};
+	#else
+	enum SolverType
+	{
+		DP,
+		ES,
+		SA
+	};
+	#endif
+	
 }

@@ -1,151 +1,150 @@
-#include <ProblemModels/Subset.h>
+#include "TxnSP/ProblemModels/Subset.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    void Subset::ClearList()
+    void Subset::clearList()
 	{
-        for(int i = 0; i < schNum; i++)
+        for(int i = 0; i < scheduleNumber_; i++)
         {
-            schp->ReturnSchedule(list[i]);
+            schedulePool_->returnSchedule(list_[i]);
         }
 	}
 
-    void Subset::CheckEquivalency()
+    void Subset::checkEquivalency()
     {
         int ind = 0;
 
-		while (ind < schNum)
+		while (ind < scheduleNumber_)
 		{
 			int ind2 = ind + 1;
 			int move = 0;
 
-			while (ind2 < schNum)
+			while (ind2 < scheduleNumber_)
 			{
-				if (list[ind]->IsEquivalent(list[ind2]))
+				if (list_[ind]->isEquivalent(list_[ind2]))
 				{
 					move++;
-					schp->ReturnSchedule(list[ind2]);
+					schedulePool_->returnSchedule(list_[ind2]);
 				}
 				else if (move > 0)
 				{
-					list[ind2 - move] = list[ind2];
+					list_[ind2 - move] = list_[ind2];
 				}
 
 				ind2++;
 			}
 
 			ind++;
-			schNum -= move;
+			scheduleNumber_ -= move;
 		}
     }
 
-    void Subset::Finalize()
+    void Subset::finalize()
     {
-        double min = list[0]->GetMakespan();
+        double min = list_[0]->getMakespan();
 		int ind = 0;
 
-		for (int i = 1; i < schNum; i++)
+		for (int i = 1; i < scheduleNumber_; i++)
 		{
-			if (list[i]->GetMakespan() < min)
+			if (list_[i]->getMakespan() < min)
 			{
-				schp->ReturnSchedule(list[ind]);
+				schedulePool_->returnSchedule(list_[ind]);
 				ind = i;
-				min = list[i]->GetMakespan();
+				min = list_[i]->getMakespan();
 			}
 			else
 			{
-				schp->ReturnSchedule(list[i]);
+				schedulePool_->returnSchedule(list_[i]);
 			}
 		}
 
-		Schedule* temp = list[ind];
-		delete[] list;
-		list = new Schedule*[1](temp);
-		schNum = 1;
+		Schedule* temp = list_[ind];
+		delete[] list_;
+		list_ = new Schedule*[1](temp);
+		scheduleNumber_ = 1;
     }
 
-    void Subset::Eliminate(double makespan)
+    void Subset::eliminate(double makespan)
     {
         int move = 0;
 
-		for (int i = 0; i < schNum; i++)
+		for (int i = 0; i < scheduleNumber_; i++)
 		{
-			if (list[i]->GetMintime() >= makespan)
+			if (list_[i]->getMinimumTime() >= makespan && move < scheduleNumber_ - 1)
 			{
 				move++;
-				schp->ReturnSchedule(list[i]);
+				schedulePool_->returnSchedule(list_[i]);
 			}
 			else
 			{
-				list[i - move] = list[i];
+				list_[i - move] = list_[i];
 			}
 		}
 
-		schNum -= move;
+		scheduleNumber_ -= move;
 
-		if (size <= list[0]->GetM())
+		if (size_ <= list_[0]->getMachineNumber())
 		{
-			CheckEquivalency();
+			checkEquivalency();
 		}
     }
 
-    Subset::Subset(int psize, int size, int schNum, Schedule** sch, SchedulePool* schp) : psize(psize), size(size), schNum(schNum), schSize(schNum), list(sch), schp(schp) { }
+    Subset::Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, SchedulePool* schedulePool)
+	: problemSize_(problemSize), size_(size), scheduleNumber_(scheduleNumber), list_(schedules), schedulePool_(schedulePool) { }
 
-    Subset::Subset(int psize, int size, int schNum, Schedule** sch, double makespan, SchedulePool* schp) : psize(psize), size(size), schNum(schNum), schSize(schNum), list(sch), schp(schp)
+    Subset::Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, double makespan, SchedulePool* schedulePool)
+	: problemSize_(problemSize), size_(size), scheduleNumber_(scheduleNumber), list_(schedules), schedulePool_(schedulePool)
     {
-        if (size == psize)
+        if (size == problemSize)
 		{
-			Finalize();
+			finalize();
 		}
 		else
 		{
-			Eliminate(makespan);
+			eliminate(makespan);
 		}
     }
 
-    void Subset::Change(int psize, int size, int schNum, Schedule** sch)
+    void Subset::change(int size, int scheduleNumber, Schedule** sch)
     {   
-        ClearList();
-        delete[] list;
-        list = sch;
-		this->size = size;
-        this->schNum = schNum;
-        this->schSize = schNum;
-		list = sch;
+        clearList();
+        delete[] list_;
+        list_ = sch;
+		size_ = size;
+        scheduleNumber_ = scheduleNumber;
+		list_ = sch;
     }
 
-	void Subset::Change(int psize, int size, int schNum, double makespan, Schedule** sch)
+	void Subset::change(int size, int scheduleNumber, double makespan, Schedule** schedules)
 	{
-		ClearList();
-		delete[] list;
-		list = sch;
-		this->size = size;
-		this->schNum = schNum;
-		this->schSize = schNum;
+		clearList();
+		delete[] list_;
+		list_ = schedules;
+		size_ = size;
+		scheduleNumber_ = scheduleNumber;
 
-		if (size == psize)
+		if (size == problemSize_)
 		{
-			Finalize();
+			finalize();
 		}
 		else
 		{
-			Eliminate(makespan);
+			eliminate(makespan);
 		}
 	}
 
-    int Subset::GetScheduleNum()
+    int Subset::getScheduleNumber()
     {
-        return schNum;
+        return scheduleNumber_;
     }
 
-    Schedule* Subset::GetSchedule(int ind)
+    Schedule* Subset::getSchedule(int ind)
     {
-        return list[ind];
+        return list_[ind];
     }
 
     Subset::~Subset()
     {
-        //ClearList();
-        delete[] list;
+        delete[] list_;
     }
 }

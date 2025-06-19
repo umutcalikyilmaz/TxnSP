@@ -1,22 +1,29 @@
 #pragma once
+#include <float.h>
 #include <vector>
-#include <ProblemModels/Schedule.h>
+#include "TxnSP/ProblemModels/Schedule.h"
 
-namespace TransactionScheduling
+using namespace std;
+
+namespace TxnSP
 {
     struct SolverOutput
     {
-        vector<vector<int>> cores;  
-        vector<double> coreTimes;
+        vector<vector<int>> jobs;  
+        vector<double> processingTimes;
         vector<double> startingTimes;
         vector<double> endingTimes;
         vector<int> assignments;
         vector<vector<int>> conflicts;
         double makespan;
-		double mintime;
+		double minimumTime;
         double runtime;
-        int n;
-        int m;
+        int jobNumber;
+        int machineNumber;
+
+        SolverOutput(Problem* prb, double runtime);
+
+        SolverOutput(Problem* prb, int* state, double runtime);
 
         SolverOutput(Problem* prb, Schedule* sch, double runtime);
 

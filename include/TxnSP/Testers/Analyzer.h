@@ -4,16 +4,16 @@
 #include <set>
 #include <sstream>
 #include <thread>
-#include <PoolingModels/SchedulePool.h>
-#include <Structs/AnalyzerInput.h>
+#include "TxnSP/PoolingModels/SchedulePool.h"
+#include "TxnSP/Structs/AnalyzerInput.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     void ThreadFunction(Problem** problems, int n, int m, int prbNum, double* spaceSizes, double* optNums, double* per1, double* per5, double* per10, double* per20);
 
     class Analyzer
     {
     public:
-        void Analyze(const AnalyzerInput& inp);
+        void analyze(const AnalyzerInput& inp);
     };
 }

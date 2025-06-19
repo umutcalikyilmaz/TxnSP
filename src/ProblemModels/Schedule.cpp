@@ -1,578 +1,584 @@
-#include <ProblemModels/Schedule.h>
+#include "TxnSP/ProblemModels/Schedule.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-	Schedule::Schedule(Schedule* sch) : size(sch->size), n(sch->n), m(sch->m), makespan(sch->makespan), mintime(sch->mintime), minimumCore(sch->minimumCore), del(false)
+	Schedule::Schedule(Schedule* sch) : size_(sch->size_), jobNumber_(sch->jobNumber_), machineNumber_(sch->machineNumber_),
+	makespan_(sch->makespan_), minimumTime_(sch->minimumTime_), minimumMachine_(sch->minimumMachine_), del_(false)
 	{
-		cores = new int* [m];
-		coreNums = new int[m];
-		coreTimes = new double[m];
-		lastJobs = new int[m];
+		jobs_ = new int* [machineNumber_];
+		jobNumbers_ = new int[machineNumber_];
+		processingTimes_ = new double[machineNumber_];
+		lastJobs_ = new int[machineNumber_];
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			cores[i] = new int[n];
-			coreNums[i] = sch->coreNums[i];
-			coreTimes[i] = sch->coreTimes[i];
-			lastJobs[i] = sch->lastJobs[i];
+			jobs_[i] = new int[jobNumber_];
+			jobNumbers_[i] = sch->jobNumbers_[i];
+			processingTimes_[i] = sch->processingTimes_[i];
+			lastJobs_[i] = sch->lastJobs_[i];
 
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < jobNumber_; j++)
 			{
-				cores[i][j] = sch->cores[i][j];
+				jobs_[i][j] = sch->jobs_[i][j];
 			}
 		}
 	}
 
-	Schedule::Schedule(Problem* prb, int job) : n(prb->GetN()), m(prb->GetM()), size(1), makespan(prb->GetT(job)), minimumCore(1), mintime(0), del(false)
+	Schedule::Schedule(Problem* prb, int job) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
+	size_(1), makespan_(prb->getLength(job)), minimumMachine_(1), minimumTime_(0), del_(false)
 	{
-		cores = new int*[m];
-		coreTimes = new double[m];
-		lastJobs = new int[m];
-		coreNums = new int[m];
+		jobs_ = new int*[machineNumber_];
+		processingTimes_ = new double[machineNumber_];
+		lastJobs_ = new int[machineNumber_];
+		jobNumbers_ = new int[machineNumber_];
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			cores[i] = new int[n];
-			coreTimes[i] = 0;
-			coreNums[i] = 0;
+			jobs_[i] = new int[jobNumber_];
+			processingTimes_[i] = 0;
+			jobNumbers_[i] = 0;
 
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < jobNumber_; j++)
 			{
-				cores[i][j] = -1;
+				jobs_[i][j] = -1;
 			}
 		}
 
-		lastJobs[0] = job;
-		cores[0][0] = job;
-		coreTimes[0] = makespan;
-		coreNums[0] = 1;
+		lastJobs_[0] = job;
+		jobs_[0][0] = job;
+		processingTimes_[0] = makespan_;
+		jobNumbers_[0] = 1;
 	}
 
-	Schedule::Schedule(Problem* prb, Schedule* sch, int job) : n(prb->GetN()), m(prb->GetM()), size(sch->size), minimumCore(sch->minimumCore), makespan(sch->makespan), mintime(sch->mintime), del(false)
+	Schedule::Schedule(Problem* prb, Schedule* sch, int job) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
+	size_(sch->size_), minimumMachine_(sch->minimumMachine_), makespan_(sch->makespan_), minimumTime_(sch->minimumTime_),
+	del_(false)
 	{
-		cores = new int*[m];
-		coreNums = new int[m];
-		coreTimes = new double[m];
-		lastJobs = new int[m];
+		jobs_ = new int*[machineNumber_];
+		jobNumbers_ = new int[machineNumber_];
+		processingTimes_ = new double[machineNumber_];
+		lastJobs_ = new int[machineNumber_];
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			cores[i] = new int[n];
-			coreNums[i] = sch->coreNums[i];
-			coreTimes[i] = sch->coreTimes[i];
-			lastJobs[i] = sch->lastJobs[i];
+			jobs_[i] = new int[jobNumber_];
+			jobNumbers_[i] = sch->jobNumbers_[i];
+			processingTimes_[i] = sch->processingTimes_[i];
+			lastJobs_[i] = sch->lastJobs_[i];
 
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < jobNumber_; j++)
 			{
-				cores[i][j] = sch->cores[i][j];
+				jobs_[i][j] = sch->jobs_[i][j];
 			}
 		}
 
-		double temp = mintime;
-		int coun = (size < m) ? size : m;
-		bool** conf = prb->GetConf();
+		double temp = minimumTime_;
+		int coun = (size_ < machineNumber_) ? size_ : machineNumber_;
+		bool** conf = prb->getConflicts();
 
 		for (int i = 0; i < coun; i++)
 		{
-			if (conf[job][lastJobs[i]])
+			if (conf[job][lastJobs_[i]])
 			{
-				if (temp < coreTimes[i])
+				if (temp < processingTimes_[i])
 				{
-					temp = coreTimes[i];
+					temp = processingTimes_[i];
 				}
 			}
 		}
 
-		size++;
-		lastJobs[minimumCore] = job;
-		cores[minimumCore][coreNums[minimumCore]] = job;
-		coreNums[minimumCore]++;
-		coreTimes[minimumCore] = temp + prb->GetT(job);
-		mintime = 1.7976931e+308;
+		size_++;
+		lastJobs_[minimumMachine_] = job;
+		jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = job;
+		jobNumbers_[minimumMachine_]++;
+		processingTimes_[minimumMachine_] = temp + prb->getLength(job);
+		minimumTime_ = 1.7976931e+308;
 
-		if (coreTimes[minimumCore] > makespan)
+		if (processingTimes_[minimumMachine_] > makespan_)
 		{
-			makespan = coreTimes[minimumCore];
+			makespan_ = processingTimes_[minimumMachine_];
 		}
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			if (coreTimes[i] < mintime)
+			if (processingTimes_[i] < minimumTime_)
 			{
-				mintime = coreTimes[i];
-				minimumCore = i;
+				minimumTime_ = processingTimes_[i];
+				minimumMachine_ = i;
 			}
 		}
 	}
 
-    Schedule::Schedule(Problem* prb, __uint128_t index, int* perm, int* a) : n(prb->GetN()), m(prb->GetM()), size(prb->GetN()), minimumCore(0), del(false)
+    Schedule::Schedule(Problem* prb, __uint128_t index, int* perm, int* a) : jobNumber_(prb->getJobNumber()),
+	machineNumber_(prb->getMachineNumber()), size_(prb->getJobNumber()), minimumMachine_(0), del_(false)
     {
-        Decode(index, perm, a, n, prb->GetDivid());
-		cores = new int*[m]; 
-		coreTimes = new double[m];
-		lastJobs = new int[m]; 
-		coreNums = new int[m]; 
-        makespan = 0;
-		mintime = 1.7976931e+308;
+        decode(index, perm, a, jobNumber_, prb->getDivid());
+		jobs_ = new int*[machineNumber_]; 
+		processingTimes_ = new double[machineNumber_];
+		lastJobs_ = new int[machineNumber_]; 
+		jobNumbers_ = new int[machineNumber_]; 
+        makespan_ = 0;
+		minimumTime_ = 1.7976931e+308;
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			cores[i] = new int[n];
-			coreNums[i] = 0;
-			coreTimes[i] = 0;
+			jobs_[i] = new int[jobNumber_];
+			jobNumbers_[i] = 0;
+			processingTimes_[i] = 0;
 
-			for (int j = 0; j < n; j++) 
+			for (int j = 0; j < jobNumber_; j++) 
 			{
-				cores[i][j] = -1;
+				jobs_[i][j] = -1;
 			}
 		}
 
-        bool** conf = prb->GetConf();
+        bool** conf = prb->getConflicts();
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
 			double temp = 0;
 
-			cores[i][0] = perm[i];
-			lastJobs[i] = perm[i];
-			coreNums[i]++;            		
+			jobs_[i][0] = perm[i];
+			lastJobs_[i] = perm[i];
+			jobNumbers_[i]++;            		
 
 			for (int j = 0; j <= i; j++)
 			{
-				if (conf[perm[i]][lastJobs[j]])
+				if (conf[perm[i]][lastJobs_[j]])
 				{
-					if (coreTimes[j] > temp)
+					if (processingTimes_[j] > temp)
 					{
-						temp = coreTimes[j];
+						temp = processingTimes_[j];
 					}
 				}
 			}
 
-			coreTimes[i] = temp + prb->GetT(perm[i]);
+			processingTimes_[i] = temp + prb->getLength(perm[i]);
 
-			if (coreTimes[i] < mintime)
+			if (processingTimes_[i] < minimumTime_)
 			{
-				mintime = coreTimes[i];
-				minimumCore = i;
+				minimumTime_ = processingTimes_[i];
+				minimumMachine_ = i;
 			}
 		}
 
-		for (int i = m; i < n; i++)
+		for (int i = machineNumber_; i < jobNumber_; i++)
 		{
-			double temp = coreTimes[minimumCore];
+			double temp = processingTimes_[minimumMachine_];
 
-			cores[minimumCore][coreNums[minimumCore]] = perm[i];
-			lastJobs[minimumCore] = perm[i];			
-			coreNums[minimumCore]++;
+			jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = perm[i];
+			lastJobs_[minimumMachine_] = perm[i];			
+			jobNumbers_[minimumMachine_]++;
 
-			for (int j = 0; j < m; j++)
+			for (int j = 0; j < machineNumber_; j++)
 			{
-				if (conf[perm[i]][lastJobs[j]])
+				if (conf[perm[i]][lastJobs_[j]])
 				{
-					if (coreTimes[j] > temp)
+					if (processingTimes_[j] > temp)
 					{
-						temp = coreTimes[j];
+						temp = processingTimes_[j];
 					}
 				}
 			}
 
-			coreTimes[minimumCore] = temp + prb->GetT(perm[i]);
-			mintime = 1.7976931e+308;
+			processingTimes_[minimumMachine_] = temp + prb->getLength(perm[i]);
+			minimumTime_ = 1.7976931e+308;
 
-			for (int j = 0; j < m; j++)
+			for (int j = 0; j < machineNumber_; j++)
 			{
-				if (coreTimes[j] < mintime)
+				if (processingTimes_[j] < minimumTime_)
 				{
-					mintime = coreTimes[j];
-					minimumCore = j;
+					minimumTime_ = processingTimes_[j];
+					minimumMachine_ = j;
 				}
 			}
 		}		
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < jobNumber_; i++)
 		{
-			if (coreTimes[i] > makespan)
+			if (processingTimes_[i] > makespan_)
 			{
-				makespan = coreTimes[i];
+				makespan_ = processingTimes_[i];
 			}
 		}
     }
 
-	Schedule::Schedule(Problem* prb, int* state) : n(prb->GetN()), m(prb->GetM()), size(prb->GetN()), minimumCore(0), del(true)
+	Schedule::Schedule(Problem* prb, int* state) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
+	size_(prb->getJobNumber()), minimumMachine_(0), del_(true)
 	{		
-		cores = new int*[m];
-		coreTimes = new double[m];
-		lastJobs = new int[m];
-		coreNums = new int[m];
-		order = new int[m];
-		bool** conf = prb->GetConf();
-		double* T = prb->GetT();
+		jobs_ = new int*[machineNumber_];
+		processingTimes_ = new double[machineNumber_];
+		lastJobs_ = new int[machineNumber_];
+		jobNumbers_ = new int[machineNumber_];
+		order_ = new int[machineNumber_];
+		bool** conf = prb->getConflicts();
+		double* T = prb->getLengths();
 		int job;
 		double temp;
 		
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
 			temp = 0;
 			job = state[i];
-
-			cores[i] = new int[n];
-			cores[i][0] = job;
-			lastJobs[i] = job;
-			coreNums[i] = 1;
+			
+			jobs_[i] = new int[jobNumber_];
+			jobs_[i][0] = job;
+			lastJobs_[i] = job;
+			jobNumbers_[i] = 1;
 			
 			for (int j = i - 1; j > -1; j--)
 			{
-				if (conf[job][lastJobs[order[j]]])
+				if (conf[job][lastJobs_[order_[j]]])
 				{
-					temp = coreTimes[order[j]];
+					temp = processingTimes_[order_[j]];
 					break;
 				}
 			}
 
-			coreTimes[i] = temp + T[job];
-			int ind = FindPlace2(coreTimes, order, coreTimes[i], i);
-			Shift(order, ind, i);
-			order[ind] = i;			
+			processingTimes_[i] = temp + T[job];
+			int ind = findPlace2(processingTimes_, order_, processingTimes_[i], i);
+			shift(order_, ind, i);
+			order_[ind] = i;
 		}
 
-		for (int i = m; i < n; i++)
+		for (int i = machineNumber_; i < jobNumber_; i++)
 		{
-			temp = coreTimes[order[0]];
+			temp = processingTimes_[order_[0]];
 			job = state[i];
 
-			cores[order[0]][coreNums[order[0]]] = job;
-			lastJobs[order[0]] = job;
-			coreNums[order[0]]++;
+			jobs_[order_[0]][jobNumbers_[order_[0]]] = job;
+			lastJobs_[order_[0]] = job;
+			jobNumbers_[order_[0]]++;
 			
-			for (int j = m - 1; j > 0; j--)
+			for (int j = machineNumber_ - 1; j > 0; j--)
 			{
-				if (conf[job][lastJobs[order[j]]])
+				if (conf[job][lastJobs_[order_[j]]])
 				{
-					temp = coreTimes[order[j]];
+					temp = processingTimes_[order_[j]];
 					break;
 				}
 			}
 
-			coreTimes[order[0]] = temp + T[job];
-			int ind = FindPlace(coreTimes, order, coreTimes[order[0]], m);
-			int tempi = order[0];
-			Shift(order, ind);
-			order[ind] = tempi;
+			processingTimes_[order_[0]] = temp + T[job];
+			int ind = findPlace(processingTimes_, order_, processingTimes_[order_[0]], machineNumber_);
+			int tempi = order_[0];
+			shift(order_, ind);
+			order_[ind] = tempi;
 		}
 
-		mintime = coreTimes[order[0]];
-		makespan = coreTimes[order[m - 1]];
+		minimumTime_ = processingTimes_[order_[0]];
+		makespan_ = processingTimes_[order_[machineNumber_ - 1]];
 	}
 
-	void Schedule::Change(Schedule* sch)
+	void Schedule::change(Schedule* sch)
 	{	
-		size = sch->size;
-		makespan = sch->makespan;
-		mintime = sch->mintime;
-		minimumCore = sch->minimumCore;
+		size_ = sch->size_;
+		makespan_ = sch->makespan_;
+		minimumTime_ = sch->minimumTime_;
+		minimumMachine_ = sch->minimumMachine_;
 			
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			coreNums[i] = sch->coreNums[i];
-			coreTimes[i] = sch->coreTimes[i];
-			lastJobs[i] = sch->lastJobs[i];
+			jobNumbers_[i] = sch->jobNumbers_[i];
+			processingTimes_[i] = sch->processingTimes_[i];
+			lastJobs_[i] = sch->lastJobs_[i];
 			
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < jobNumber_; j++)
 			{
-				cores[i][j] = sch->cores[i][j];
+				jobs_[i][j] = sch->jobs_[i][j];
 			}
 		}
 	}
 
-	void Schedule::Change(Problem* prb, int job)
+	void Schedule::change(Problem* prb, int job)
 	{
-		size = 1;
-		minimumCore = 1;
-		mintime = 0;
-		makespan = prb->GetT(job);
+		size_ = 1;
+		minimumMachine_ = 1;
+		minimumTime_ = 0;
+		makespan_ = prb->getLength(job);
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			coreTimes[i] = 0;
-			coreNums[i] = 0;
+			processingTimes_[i] = 0;
+			jobNumbers_[i] = 0;
 
-			for (int j = 0; j < n; j++)
+			for (int j = 0; j < jobNumber_; j++)
 			{
-				cores[i][j] = -1;
+				jobs_[i][j] = -1;
 			}
 		}
 
-		lastJobs[0] = job;
-		cores[0][0] = job;
-		coreTimes[0] = makespan;		
-		coreNums[0] = 1;
+		lastJobs_[0] = job;
+		jobs_[0][0] = job;
+		processingTimes_[0] = makespan_;		
+		jobNumbers_[0] = 1;
 	}
 
-	void Schedule::Change(Problem* prb, Schedule* sch, int job)
+	void Schedule::change(Problem* prb, Schedule* sch, int job)
 	{
-		Change(sch);
+		change(sch);
 
-		int ind = minimumCore;
-		double temp = mintime;
-		int coun = (size < m) ? size : m;
-		bool** conf = prb->GetConf();
+		int ind = minimumMachine_;
+		double temp = minimumTime_;
+		int coun = (size_ < machineNumber_) ? size_ : machineNumber_;
+		bool** conf = prb->getConflicts();
 
 		for(int i = 0; i < coun; i++)
 		{
-			if(conf[job][lastJobs[i]])
+			if(conf[job][lastJobs_[i]])
 			{
-				if (temp < coreTimes[i])
+				if (temp < processingTimes_[i])
 				{
-					temp = coreTimes[i];
+					temp = processingTimes_[i];
 				}
 			}
 		}
 
-		size++;
-		lastJobs[ind] = job;
-		cores[ind][coreNums[ind]] = job;
-		coreNums[ind]++;
-		coreTimes[ind] = temp + prb->GetT(job);
-		mintime = 1.7976931e+308;
+		size_++;
+		lastJobs_[ind] = job;
+		jobs_[ind][jobNumbers_[ind]] = job;
+		jobNumbers_[ind]++;
+		processingTimes_[ind] = temp + prb->getLength(job);
+		minimumTime_ = 1.7976931e+308;
 
-		if (coreTimes[ind] > makespan)
+		if (processingTimes_[ind] > makespan_)
 		{
-			makespan = coreTimes[ind];
+			makespan_ = processingTimes_[ind];
 		}
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			if (coreTimes[i] < mintime)
+			if (processingTimes_[i] < minimumTime_)
 			{
-				mintime = coreTimes[i];
-				minimumCore = i;
+				minimumTime_ = processingTimes_[i];
+				minimumMachine_ = i;
 			}
 		}	
 	}
 
-	void Schedule::Change(Problem* prb, __uint128_t index, int* perm, int* a)
+	void Schedule::change(Problem* prb, __uint128_t index, int* perm, int* a)
 	{
-		size = prb->GetN();
-		minimumCore = 0;
-		Decode(index, perm, a, n, prb->GetDivid());
-		mintime = 1.7976931e+308;
+		size_ = prb->getJobNumber();
+		minimumMachine_ = 0;
+		decode(index, perm, a, jobNumber_, prb->getDivid());
+		minimumTime_ = 1.7976931e+308;
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			coreNums[i] = 0;
-			coreTimes[i] = 0;
+			jobNumbers_[i] = 0;
+			processingTimes_[i] = 0;
 
-			for (int j = 0; j < n; j++) 
+			for (int j = 0; j < jobNumber_; j++) 
 			{
-				cores[i][j] = -1;
+				jobs_[i][j] = -1;
 			}
 		}
 
-		bool** conf = prb->GetConf();
-		double* t = prb->GetT();
+		bool** conf = prb->getConflicts();
+		double* t = prb->getLengths();
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
 			double temp = 0;
 
-			cores[i][0] = perm[i];
-			lastJobs[i] = perm[i];
-			coreNums[i]++;
+			jobs_[i][0] = perm[i];
+			lastJobs_[i] = perm[i];
+			jobNumbers_[i]++;
 
 			for (int j = 0; j <= i; j++)
 			{
-				if (conf[perm[i]][lastJobs[j]])
+				if (conf[perm[i]][lastJobs_[j]])
 				{
-					if (coreTimes[j] > temp)
+					if (processingTimes_[j] > temp)
 					{
-						temp = coreTimes[j];
+						temp = processingTimes_[j];
 					}
 				}
 			}
 
-			coreTimes[i] = temp + t[perm[i]];
+			processingTimes_[i] = temp + t[perm[i]];
 
-			if (coreTimes[i] < mintime)
+			if (processingTimes_[i] < minimumTime_)
 			{
-				mintime = coreTimes[i];
-				minimumCore = i;
+				minimumTime_ = processingTimes_[i];
+				minimumMachine_ = i;
 			}
 		}
 
-		for (int i = m; i < n; i++)
+		for (int i = machineNumber_; i < jobNumber_; i++)
 		{
-			double temp = coreTimes[minimumCore];
+			double temp = processingTimes_[minimumMachine_];
 
-			cores[minimumCore][coreNums[minimumCore]] = perm[i];
-			lastJobs[minimumCore] = perm[i];
-			coreNums[minimumCore]++;
+			jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = perm[i];
+			lastJobs_[minimumMachine_] = perm[i];
+			jobNumbers_[minimumMachine_]++;
 
-			for (int j = 0; j < m; j++)
+			for (int j = 0; j < machineNumber_; j++)
 			{
-				if (conf[perm[i]][lastJobs[j]])
+				if (conf[perm[i]][lastJobs_[j]])
 				{
-					if (coreTimes[j] > temp)
+					if (processingTimes_[j] > temp)
 					{
-						temp = coreTimes[j];
+						temp = processingTimes_[j];
 					}
 				}
 			}
 
-			coreTimes[minimumCore] = temp + t[perm[i]];
-			mintime = 1.7976931e+308;
+			processingTimes_[minimumMachine_] = temp + t[perm[i]];
+			minimumTime_ = 1.7976931e+308;
 
-			for (int j = 0; j < m; j++)
+			for (int j = 0; j < machineNumber_; j++)
 			{
-				if (coreTimes[j] < mintime)
+				if (processingTimes_[j] < minimumTime_)
 				{
-					mintime = coreTimes[j];
-					minimumCore = j;
+					minimumTime_ = processingTimes_[j];
+					minimumMachine_ = j;
 				}
 			}
 		}
 
-		makespan = 0;
+		makespan_ = 0;
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
-			if (coreTimes[i] > makespan)
+			if (processingTimes_[i] > makespan_)
 			{
-				makespan = coreTimes[i];
+				makespan_ = processingTimes_[i];
 			}
 		}
 	}
 
-	void Schedule::Change(Problem* prb, int* state)
+	void Schedule::change(Problem* prb, int* state)
 	{		
-		bool** conf = prb->GetConf();
-		double* T = prb->GetT();
+		bool** conf = prb->getConflicts();
+		double* T = prb->getLengths();
 		double temp;
 		int job;
 
-		for (int i = 0; i < m; i++)
+		for (int i = 0; i < machineNumber_; i++)
 		{
 			temp = 0;
 			job = state[i];
 
-			cores[i][0] = job;
-			lastJobs[i] = job;
-			coreNums[i] = 1;
+			jobs_[i][0] = job;
+			lastJobs_[i] = job;
+			jobNumbers_[i] = 1;
 			
 			for (int j = i - 1; j > -1; j--)
 			{
-				if (conf[job][lastJobs[order[j]]])
+				if (conf[job][lastJobs_[order_[j]]])
 				{
-					temp = coreTimes[order[j]];
+					temp = processingTimes_[order_[j]];
 					break;
 				}
 			}
 
-			coreTimes[i] = temp + T[job];
-			int ind = FindPlace2(coreTimes, order, coreTimes[i], i);
-			Shift(order, ind, i);
-			order[ind] = i;	
+			processingTimes_[i] = temp + T[job];
+			int ind = findPlace2(processingTimes_, order_, processingTimes_[i], i);
+			shift(order_, ind, i);
+			order_[ind] = i;	
 			
 		}
 
-		for (int i = m; i < n; i++)
+		for (int i = machineNumber_; i < jobNumber_; i++)
 		{			
-			temp = coreTimes[order[0]];
+			temp = processingTimes_[order_[0]];
 			job = state[i];
 
-			cores[order[0]][coreNums[order[0]]] = job;
-			lastJobs[order[0]] = job;
-			coreNums[order[0]]++;
+			jobs_[order_[0]][jobNumbers_[order_[0]]] = job;
+			lastJobs_[order_[0]] = job;
+			jobNumbers_[order_[0]]++;
 
-			for (int j = m - 1; j > 0; j--)
+			for (int j = machineNumber_ - 1; j > 0; j--)
 			{
-				if (conf[job][lastJobs[order[j]]])
+				if (conf[job][lastJobs_[order_[j]]])
 				{
-					temp = coreTimes[order[j]];
+					temp = processingTimes_[order_[j]];
 					break;
 				}
 			}
 
-			coreTimes[order[0]] = temp + T[job];
-			int tempi = order[0];
-			int ind = FindPlace(coreTimes, order, coreTimes[order[0]], m);			
-			Shift(order, ind);
-			order[ind] = tempi;
+			processingTimes_[order_[0]] = temp + T[job];
+			int tempi = order_[0];
+			int ind = findPlace(processingTimes_, order_, processingTimes_[order_[0]], machineNumber_);			
+			shift(order_, ind);
+			order_[ind] = tempi;
 			
 		}
 
-		makespan = coreTimes[order[m - 1]];
-		mintime = coreTimes[order[0]];
+		makespan_ = processingTimes_[order_[machineNumber_ - 1]];
+		minimumTime_ = processingTimes_[order_[0]];
 	}
 
-    int Schedule::GetN() const
+    int Schedule::getJobNumber() const
     {
-        return n;
+        return jobNumber_;
     }
 
-	int Schedule::GetM() const
+	int Schedule::getMachineNumber() const
     {
-        return m;
+        return machineNumber_;
     }
 
-	int Schedule::GetSize() const
+	int Schedule::getSize() const
     {
-        return size;
+        return size_;
     }
 
-	double Schedule::GetMakespan() const
+	double Schedule::getMakespan() const
     {
-        return makespan;
+        return makespan_;
     }
 
-	double Schedule::GetMintime() const
+	double Schedule::getMinimumTime() const
     {
-        return mintime;
+        return minimumTime_;
     }
 
-	int Schedule::GetMinimumCore() const
+	int Schedule::getMinimumMachine() const
     {
-        return minimumCore;
+        return minimumMachine_;
     }
 
-	int** Schedule::GetJobs() const
+	int** Schedule::getJobs() const
     {
-        return cores;
+        return jobs_;
     }    
 
-	double* Schedule::GetCoreTimes() const
+	double* Schedule::getProcessingTimes() const
     {
-        return coreTimes;
+        return processingTimes_;
     }
 
-	int* Schedule::GetLastJobs() const
+	int* Schedule::getLastJobs() const
     {
-        return lastJobs;
+        return lastJobs_;
     }
 
-	int* Schedule::GetCoreNums() const
+	int* Schedule::getJobNumbers() const
     {
-        return coreNums;
+        return jobNumbers_;
     }
 
-	bool Schedule::IsEquivalent(Schedule* sch)
+	bool Schedule::isEquivalent(Schedule* sch)
 	{
 		std::map<int,double> ptMap;
 		
-		for(int i = 0; i < size; i++)
+		for(int i = 0; i < size_; i++)
 		{
-			ptMap[cores[i][0]] = coreTimes[i];
+			ptMap[jobs_[i][0]] = processingTimes_[i];
 		}
 
-		for(int i = 0; i < size; i++)
+		for(int i = 0; i < size_; i++)
 		{
-			std::map<int,double>::iterator item = ptMap.find(sch->cores[i][0]);
+			std::map<int,double>::iterator item = ptMap.find(sch->jobs_[i][0]);
 
 			if(item == ptMap.end())
 			{
 				return false;
 			}
 
-			if(item->second - coreTimes[i] < 0.00001 && item->second - coreTimes[i] > -0.00001)
+			if(item->second - processingTimes_[i] < 0.00001 && item->second - processingTimes_[i] > -0.00001)
 			{
 				return false;
 			}
@@ -583,19 +589,19 @@ namespace TransactionScheduling
 
     Schedule::~Schedule()
     {
-        for (int i = 0; i < m; i++)
+        for (int i = 0; i < machineNumber_; i++)
 		{
-			delete[] cores[i];
+			delete[] jobs_[i];
 		}
 
-		delete[] cores;
-		delete[] coreNums;
-		delete[] coreTimes;
-		delete[] lastJobs;
+		delete[] jobs_;
+		delete[] jobNumbers_;
+		delete[] processingTimes_;
+		delete[] lastJobs_;
 
-		if(del)
+		if(del_)
 		{
-			delete[] order;
+			delete[] order_;
 		}
     }
 }

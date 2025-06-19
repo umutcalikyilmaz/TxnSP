@@ -1,7 +1,7 @@
 #pragma once
-#include <ProblemModels/Problem.h>
+#include "TxnSP/ProblemModels/Problem.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     struct SolverInput
     {

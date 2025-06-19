@@ -1,35 +1,37 @@
-#include <ProblemModels/Problem.h>
+#include "TxnSP/ProblemModels/Problem.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
-    Problem::Problem(int n, int m, double* t, bool** conf) : n(n), m(m), t(t), conf(conf), divid(new int[n]), size(1)
+    Problem::Problem(int jobNumber, int machineNumber, double* lengths, bool** conflicts) : jobNumber_(jobNumber),
+    machineNumber_(machineNumber), lengths_(lengths), conflicts_(conflicts), divid_(new int[jobNumber]), size_(1)
     {
-        for (int i = 2; i <= n; i++)
+        for (int i = 2; i <= jobNumber; i++)
 		{
-			size *= i;
+			size_ *= i;
 		}
 
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < jobNumber; i++)
 		{
-			divid[i] = 1;
+			divid_[i] = 1;
 
-			for (int j = 2; j < (n - i); j++)
+			for (int j = 2; j < (jobNumber - i); j++)
 			{
-				divid[i] *= j;
+				divid_[i] *= j;
 			}
 		}
     }
 
-    Problem::Problem(int n, int m, double para1, double para2, double cp, Distribution dist) : n(n), m(m), size(1)
+    Problem::Problem(int jobNumber, int machineNumber, ProbabilityDistribution dist, double distributionparameter1,
+    double distributionParameter2, double conflictParity) : jobNumber_(jobNumber), machineNumber_(machineNumber), size_(1)
     {
-        for (int i = 2; i <= n; i++)
+        for (int i = 2; i <= jobNumber; i++)
 		{
-			size *= i;
+			size_ *= i;
 		}
 
-		t = new double[n];
-		divid = new int[n];
-		conf = new bool*[n];
+		lengths_ = new double[jobNumber];
+		divid_ = new int[jobNumber];
+		conflicts_ = new bool*[jobNumber];
 
         NormalRandomNumberGenerator* nrnd;
         UniformRandomDoubleGenerator* urnd;
@@ -37,44 +39,44 @@ namespace TransactionScheduling
 
         if(dist == NormalDistribution)
         {
-            nrnd = new NormalRandomNumberGenerator(para1, para2);
+            nrnd = new NormalRandomNumberGenerator(distributionparameter1, distributionParameter2);
         }
         else
         {
-            urnd = new UniformRandomDoubleGenerator(para1, para2);
+            urnd = new UniformRandomDoubleGenerator(distributionparameter1, distributionParameter2);
         }
 
         double p;
 
-        for(int i = 0; i < n; i++)
+        for(int i = 0; i < jobNumber; i++)
         {
             do
             {
-                t[i] = (dist == NormalDistribution) ? nrnd->Generate() : urnd->Generate();
+                lengths_[i] = (dist == NormalDistribution) ? nrnd->generate() : urnd->generate();
             }
-            while(t[i] < 0);
+            while(lengths_[i] < 0);
             
-            conf[i] = new bool[n];
-            divid[i] = 1;
-            conf[i][i] = false;
+            conflicts_[i] = new bool[jobNumber];
+            divid_[i] = 1;
+            conflicts_[i][i] = false;
 
             for(int j = 0; j < i; j++)
             {
-                p = rnd2.Generate();
-                conf[i][j] = p < cp;
+                p = rnd2.generate();
+                conflicts_[i][j] = p < conflictParity;
             }
 
-            for (int j = 2; j < (n - i); j++)
+            for(int j = 2; j < (jobNumber - i); j++)
 			{
-				divid[i] *= j;
+				divid_[i] *= j;
 			}
         }
 
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < jobNumber; i++)
 		{
-			for (int j = i + 1; j < n; j++)
+			for (int j = i + 1; j < jobNumber; j++)
 			{
-				conf[i][j] = conf[j][i];
+				conflicts_[i][j] = conflicts_[j][i];
 			}
 		}
 
@@ -88,64 +90,64 @@ namespace TransactionScheduling
         }
     }
 
-    int Problem::GetN() const
+    int Problem::getJobNumber() const
     {
-        return n;
+        return jobNumber_;
     }
 		
-	int Problem::GetM() const
+	int Problem::getMachineNumber() const
     {
-        return m;
+        return machineNumber_;
     }
 
-	double* Problem::GetT() const
+	double* Problem::getLengths() const
     {
-        return t;
+        return lengths_;
     }
 
-    double Problem::GetT(int ind) const
+    double Problem::getLength(int ind) const
     {
-        return t[ind];
+        return lengths_[ind];
     }
 
-    bool** Problem::GetConf() const
+    bool** Problem::getConflicts() const
     {
-        return conf;
+        return conflicts_;
     }
 
-	int* Problem::GetDivid() const
+	int* Problem::getDivid() const
     {
-        return divid;
+        return divid_;
     }
 
-	__uint128_t Problem::GetSize() const
+	__uint128_t Problem::getSize() const
     {
-        return size;
+        return size_;
     }
 
-    void Problem::ArrangeConf()
+    void Problem::arrangeConflicts()
     {
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < jobNumber_; i++)
 		{
-            conf[i][i] = 0;
+            conflicts_[i][i] = 0;
             
-			for (int j = i + 1; j < n; j++)
+			for (int j = i + 1; j < jobNumber_; j++)
 			{
-				conf[i][j] = conf[j][i];
+				conflicts_[i][j] = conflicts_[j][i];
 			}
 		}
     }
 
     Problem::~Problem()
     {
-        delete[] t;
+        delete[] lengths_;
 
-        for(int i = 0; i < n; i++)
+        for(int i = 0; i < jobNumber_; i++)
         {
-            delete[] conf[i];
+            delete[] conflicts_[i];
         }
 
-        delete[] conf;
-        delete[] divid;
+        delete[] conflicts_;
+        delete[] divid_;
     }
 }

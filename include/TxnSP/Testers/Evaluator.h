@@ -2,13 +2,13 @@
 #include <fstream>
 #include <sstream>
 #include <thread>
-#include <TxnSPLib.h>
-#include <Solvers/DPSolver.h>
-#include <Solvers/ESSolver.h>
-#include <Solvers/SASolver.h>
-#include <Structs/EvaluatorInput.h>
+#include "TxnSP/TxnSP.h"
+#include "TxnSP/Solvers/DPSolver.h"
+#include "TxnSP/Solvers/ESSolver.h"
+#include "TxnSP/Solvers/SASolver.h"
+#include "TxnSP/Structs/EvaluatorInput.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     void ThreadFunction(Problem** problems, int prbNum, bool es, bool mip, bool dp_exact, bool dp_approximate,
     const std::vector<std::pair<TemperatureEvolution,double>> SA_DecrementTypesAndParameters, 
@@ -17,12 +17,14 @@ namespace TransactionScheduling
 
     class Evaluator
     {
-        void EvaluatePreset(const EvaluatorInput& inp);
-
-        void EvaluateRandom(const EvaluatorInput& inp);
-
     public:
 
-        void Evaluate(const EvaluatorInput& inp);
+        void evaluate(const EvaluatorInput& inp);
+
+    private:
+
+        void evaluatePreset(const EvaluatorInput& inp);
+
+        void evaluateRandom(const EvaluatorInput& inp);
     };
 }

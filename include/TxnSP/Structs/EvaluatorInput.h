@@ -1,22 +1,22 @@
 #pragma once
 #include <utility>
 #include <vector>
-#include <Shared/Parameters.h>
+#include "TxnSP/Shared/SharedParameters.h"
 
-namespace TransactionScheduling
+namespace TxnSP
 {
     struct EvaluatorInput
     {
         string directory;
         std::vector<std::pair<double,double>> uniformParameters;
         std::vector<std::pair<double,double>> normalParameters;
-        std::vector<double>cps;
+        std::vector<double>conflictParities;
         std::vector<std::pair<TemperatureEvolution,double>> SA_DecrementTypesAndParameters;
         std::vector<double> SA_MaxTemperatures;
-        std::vector<int> nValues;
-        std::vector<int> mValues;
+        std::vector<int> jobNumbers;
+        std::vector<int> machineNumbers;
         std::vector<Problem*> problems;
-        int prbNum;
+        int problemNumber;
         int threadCount;
         SolverType baseline;
         bool mip;
