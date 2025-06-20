@@ -50,13 +50,24 @@ To be able to also use the Analyzer and Evaluator modules, the following code sh
 The main purpose of TxnSP to provide an environment for creating transaction scheduling problem instances and solving them. A problem instance can be created in two ways. The first one is random creation, which uses either normal distribution or uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using Bernoulli distribution where the conflict parity is entered by the user. The below code shows random problem creation with normal and uniform distributions.
 
 ```
+// Problem creation using normal distribution
 TxnSP::Problem problem(
     jobNumber,         // int: Number of jobs
     machineNumber,     // int: Number of machines
     TxnSP::NormalDistribution, // Distribution type
     lengthMean,        // double: Mean of job lengths
-    lengthStd,         // double: Std dev of job lengths
-    conflictParity     // int: Parity setting for conflicting jobs
+    lengthStd,         // double: Standard deviation of job lengths
+    conflictParity     // double: Parity of conflicting pair of jobs over all pairs if jobs
+);
+
+// Problem creation using uniform distribution
+TxnSP::Problem problem(
+    jobNumber,         // int: Number of jobs
+    machineNumber,     // int: Number of machines
+    TxnSP::UniformDistribution, // Distribution type
+    lowerLimit,        // double: Lower limit of job lengths
+    upperLimit,         // double: Upper limit of job lengths
+    conflictParity     // double: Parity of conflicting pair of jobs over all pairs if jobs
 );
 ```
 
