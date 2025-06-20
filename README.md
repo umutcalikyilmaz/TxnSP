@@ -25,6 +25,8 @@ sudo make install
 ```
 
 ## Usage
+
+### Importing the Library
 After installing TxnSP, it can be imported to a project by adding the following lines in the CMakeLists.txt file.
 
 ```
@@ -44,10 +46,8 @@ To be able to also use the Analyzer and Evaluator modules, the following code sh
 #include <TxnSP/TxnSPTest.h>
 ```
 
-## Library Contents
-
-### Problem Creation and Solution
-The main purpose of TxnSP to provide an environment for creating transaction scheduling problem instances and solving them. A problem instance can be created in two ways. The first one is random creation, which uses either normal distribution or uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using Bernoulli distribution where the conflict parity is entered by the user. The below code shows random problem creation with normal and uniform distributions.
+### Problem Creation
+In TxnSP, a problem instance can be created in two ways. The first one is random creation, which uses either normal distribution or uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using Bernoulli distribution where the conflict parity is entered by the user. The below code shows random problem creation with normal and uniform distributions.
 
 ```
 // Problem creation using normal distribution
@@ -85,7 +85,8 @@ TxnSP::Problem problem(
 );
 ```
 
-After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library. Usage of each solver is given below.
+### Problem Solution
+After a problem instance is created using one of the explained methods, it can be solved using one of the 4 solvers provided by TxnSP library. Usage of each solver is given below.
 
 #### Dynamic Programming:
 ```
@@ -143,5 +144,3 @@ input.SA_DecrementParameter = decrementParameter;     // double: Cooling rate
 // Solve the problem and get the output
 TxnSP::SolverOutput* output = sas.solve(input);  // Returns a pointer to solution
 ```
-
-### Analysis and Evaluation
