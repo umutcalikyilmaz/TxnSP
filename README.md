@@ -3,3 +3,13 @@ TxnSP is a software library used to create instances of the transaction scheduli
 
 ## Citation
 TxnSP is developed as a part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The results of the study is compiled in a research paper, which is pending approval for publication. The information for citation will be provided after the publication.
+
+## Installation
+TxnSP is designed for Debian and currently it is not compatible with Windows or MacOS. To install the library, the following bash instructions must be executed in the project's root folder
+
+'''bash
+mkdir build
+cd build
+cmake ..
+sudo make install
+'''
