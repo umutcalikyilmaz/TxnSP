@@ -85,8 +85,9 @@ TxnSP::Problem problem(
 );
 ```
 
-After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library. A problem instance can be solved using dynamic programming using the code below.
+After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library. Usage of each solver is given below.
 
+#### Dynamic Programming:
 ```
 // Create the dynamic programming solver
 TxnSP::DPSolver dps;
@@ -94,16 +95,53 @@ TxnSP::DPSolver dps;
 // Prepare the input structure
 TxnSP::SolverInput input;
 input.prb = problem;                         // Assign the problem instance
-input.DP_SolutionType = TxnSP::Exact;        // Use exact solution method
+input.DP_SolutionType = TxnSP::Exact;        // Use exact solution method, other option is TxnSP::Approximate
 
 // Solve the problem and get the output
 TxnSP::SolverOutput* output = dps.solve(input);  // Returns a pointer to solution
 ```
 
-To use the approximate dynamic programming approach, change the corresponding line to:
-
+#### Exhaustive Search:
 ```
-input.DP_SolutionType = TxnSP::Approximate;
+// Create the exhaustive search solver
+TxnSP::ESSolver ess;
+
+// Prepare the input structure
+TxnSP::SolverInput input;
+input.prb = problem;            // Assign the problem instance
+
+// Solve the problem and get the output
+TxnSP::SolverOutput* output = ess.solve(input);  // Returns a pointer to solution
+```
+
+
+#### Mixed-Integer Programming:
+```
+// Create the mixed-integer programming solver
+TxnSP::MIPSolver mips;
+
+// Prepare the input structure
+TxnSP::SolverInput input;
+input.prb = problem;            // Assign the problem instance
+
+// Solve the problem and get the output
+TxnSP::SolverOutput* output = mips.solve(input);  // Returns a pointer to solution
+```
+
+#### Simulated Annealing
+```
+// Create the simulated annealing solver
+TxnSP::SASolver sas;
+
+// Prepare the input structure
+TxnSP::SolverInput input;
+input.prb = problem;            // Assign the problem instance
+input.SA_MaxTemperature = maxTemperature;             // double: Set maximum temperature
+input.SA_DecrementType = TxnSP::Linear;               // Use linear temperature decrement, other optionss are TxnSP::Logarithmic and TxnSP::Slow
+input.SA_DecrementParameter = decrementParameter;     // double: Cooling rate
+
+// Solve the problem and get the output
+TxnSP::SolverOutput* output = sas.solve(input);  // Returns a pointer to solution
 ```
 
 ### Analysis and Evaluation
