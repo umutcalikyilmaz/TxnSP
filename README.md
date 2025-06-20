@@ -23,3 +23,11 @@ cd build
 cmake -DENABLE_MIP=ON ..
 sudo make install
 ```
+
+## Usage
+After installing TxnSP, it can be imported to a project by adding the following lines in the CMakeLists.txt file.
+
+```
+find_package(TxnSP REQUIRED)
+target_link_libraries(#my_project TxnSP::txnsp)
+```
