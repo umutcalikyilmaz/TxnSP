@@ -5,7 +5,7 @@ TxnSP is a software library used to create instances of the transaction scheduli
 TxnSP is developed as a part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The results of the study is compiled in a research paper, which is pending approval for publication. The information for citation will be provided after the publication.
 
 ## Installation
-TxnSP is designed for Debian and currently it is not compatible with Windows or MacOS. For standard installation, the following bash instructions must be executed in the project's root folder.
+TxnSP is designed for Debian and currently it is not compatible with Windows or MacOS. For standard installation, the following bash instructions should be executed in the project's root folder.
 
 ```bash
 mkdir build
@@ -29,27 +29,27 @@ sudo make install
 ### Importing the Library
 After installing TxnSP, it can be imported to a project by adding the following lines in the CMakeLists.txt file.
 
-```
+```cmake
 find_package(TxnSP REQUIRED)
 target_link_libraries(my_project TxnSP::txnsp)
 ```
 
 To use the problem instance creation and solver functionalities of TxnSP, the main header file should be included as below.
 
-```
+```c++
 #include <TxnSP/TxnSP.h>
 ```
 
 To be able to also use the Analyzer and Evaluator modules, the following code should be used.
 
-```
+```c++
 #include <TxnSP/TxnSPTest.h>
 ```
 
 ### Problem Creation
 In TxnSP, a problem instance can be created in two ways. The first one is random creation, which uses either normal distribution or uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using Bernoulli distribution where the conflict parity is entered by the user. The below code shows random problem creation with normal and uniform distributions.
 
-```
+```c++
 // Problem creation using normal distribution
 TxnSP::Problem problem(
     jobNumber,                     // int: Number of jobs
@@ -61,7 +61,7 @@ TxnSP::Problem problem(
 );
 ```
 
-```
+```c++
 // Problem creation using uniform distribution
 TxnSP::Problem problem(
     jobNumber,                     // int: Number of jobs
@@ -75,7 +75,7 @@ TxnSP::Problem problem(
 
 TxnSP also allows creating custom problems by providing the array of lengths and the matrix of conflicts as shown below.
 
-```
+```c++
 // Custom problem creation
 TxnSP::Problem problem(
     jobNumber,         // int: Number of jobs
@@ -89,7 +89,7 @@ TxnSP::Problem problem(
 After a problem instance is created using one of the explained methods, it can be solved using one of the 4 solvers provided by TxnSP library. Usage of each solver is given below.
 
 #### Dynamic Programming:
-```
+```c++
 // Create the dynamic programming solver
 TxnSP::DPSolver dps;
 
@@ -103,7 +103,7 @@ TxnSP::SolverOutput* output = dps.solve(input);  // Returns a pointer to solutio
 ```
 
 #### Exhaustive Search:
-```
+```c++
 // Create the exhaustive search solver
 TxnSP::ESSolver ess;
 
@@ -117,7 +117,7 @@ TxnSP::SolverOutput* output = ess.solve(input);  // Returns a pointer to solutio
 
 
 #### Mixed-Integer Programming:
-```
+```c++
 // Create the mixed-integer programming solver
 TxnSP::MIPSolver mips;
 
@@ -130,7 +130,7 @@ TxnSP::SolverOutput* output = mips.solve(input);  // Returns a pointer to soluti
 ```
 
 #### Simulated Annealing
-```
+```c++
 // Create the simulated annealing solver
 TxnSP::SASolver sas;
 
