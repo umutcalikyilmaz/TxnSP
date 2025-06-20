@@ -7,9 +7,9 @@ TxnSP is developed as a part of a study on the transaction scheduling problem an
 ## Installation
 TxnSP is designed for Debian and currently it is not compatible with Windows or MacOS. To install the library, the following bash instructions must be executed in the project's root folder
 
-'''
+```bash
 mkdir build
 cd build
 cmake ..
 sudo make install
-'''
+```
