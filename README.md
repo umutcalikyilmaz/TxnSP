@@ -52,22 +52,34 @@ The main purpose of TxnSP to provide an environment for creating transaction sch
 ```
 // Problem creation using normal distribution
 TxnSP::Problem problem(
-    jobNumber,         // int: Number of jobs
-    machineNumber,     // int: Number of machines
-    TxnSP::NormalDistribution, // Distribution type
-    lengthMean,        // double: Mean of job lengths
-    lengthStd,         // double: Standard deviation of job lengths
-    conflictParity     // double: Parity of conflicting pair of jobs over all pairs if jobs
+    jobNumber,                     // int: Number of jobs
+    machineNumber,                 // int: Number of machines
+    TxnSP::NormalDistribution,     // Distribution type
+    lengthMean,                    // double: Mean of job lengths
+    lengthStd,                     // double: Standard deviation of job lengths
+    conflictParity                 // double: Parity of conflicting pair of jobs over all pairs if jobs
 );
 
 // Problem creation using uniform distribution
 TxnSP::Problem problem(
+    jobNumber,                     // int: Number of jobs
+    machineNumber,                 // int: Number of machines
+    TxnSP::UniformDistribution,    // Distribution type
+    lowerLimit,                    // double: Lower limit of job lengths
+    upperLimit,                    // double: Upper limit of job lengths
+    conflictParity                 // double: Parity of conflicting pair of jobs over all pairs if jobs
+);
+```
+
+TxnSP also allows creating custom problems by providing the array of lengths and the matrix of conflicts as shown below.
+
+```
+// Custom problem creation
+TxnSP::Problem problem(
     jobNumber,         // int: Number of jobs
     machineNumber,     // int: Number of machines
-    TxnSP::UniformDistribution, // Distribution type
-    lowerLimit,        // double: Lower limit of job lengths
-    upperLimit,         // double: Upper limit of job lengths
-    conflictParity     // double: Parity of conflicting pair of jobs over all pairs if jobs
+    lengths,           // double*: Array of job lengths
+    conflicts          // bool**: Conflict matrix
 );
 ```
 
