@@ -57,9 +57,11 @@ TxnSP::Problem problem(
     TxnSP::NormalDistribution,     // Distribution type
     lengthMean,                    // double: Mean of job lengths
     lengthStd,                     // double: Standard deviation of job lengths
-    conflictParity                 // double: Parity of conflicting pair of jobs over all pairs if jobs
+    conflictParity                 // double: Parity of conflicting pair of jobs
 );
+```
 
+```
 // Problem creation using uniform distribution
 TxnSP::Problem problem(
     jobNumber,                     // int: Number of jobs
@@ -67,11 +69,23 @@ TxnSP::Problem problem(
     TxnSP::UniformDistribution,    // Distribution type
     lowerLimit,                    // double: Lower limit of job lengths
     upperLimit,                    // double: Upper limit of job lengths
-    conflictParity                 // double: Parity of conflicting pair of jobs over all pairs if jobs
+    conflictParity                 // double: Parity of conflicting pair of jobs
 );
 ```
 
 TxnSP also allows creating custom problems by providing the array of lengths and the matrix of conflicts as shown below.
+
+```
+// Custom problem creation
+TxnSP::Problem problem(
+    jobNumber,         // int: Number of jobs
+    machineNumber,     // int: Number of machines
+    lengths,           // double*: Array of job lengths
+    conflicts          // bool**: Conflict matrix
+);
+```
+
+After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library.
 
 ```
 // Custom problem creation
