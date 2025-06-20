@@ -85,16 +85,25 @@ TxnSP::Problem problem(
 );
 ```
 
-After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library.
+After a problem instance is created using one of the explained methids, it can be solved using one of the 4 solvers provided by TxnSP library. A problem instance can be solved using dynamic programming using the code below.
 
 ```
-// Custom problem creation
-TxnSP::Problem problem(
-    jobNumber,         // int: Number of jobs
-    machineNumber,     // int: Number of machines
-    lengths,           // double*: Array of job lengths
-    conflicts          // bool**: Conflict matrix
-);
+// Create the dynamic programming solver
+TxnSP::DPSolver dps;
+
+// Prepare the input structure
+TxnSP::SolverInput input;
+input.prb = problem;                         // Assign the problem instance
+input.DP_SolutionType = TxnSP::Exact;        // Use exact solution method
+
+// Solve the problem and get the output
+TxnSP::SolverOutput* output = dps.solve(input);  // Returns a pointer to solution
+```
+
+To use the approximate dynamic programming approach, change the corresponding line to:
+
+```
+input.DP_SolutionType = TxnSP::Approximate;
 ```
 
 ### Analysis and Evaluation
