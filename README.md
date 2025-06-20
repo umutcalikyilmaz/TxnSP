@@ -29,5 +29,17 @@ After installing TxnSP, it can be imported to a project by adding the following 
 
 ```
 find_package(TxnSP REQUIRED)
-target_link_libraries(#my_project TxnSP::txnsp)
+target_link_libraries(my_project TxnSP::txnsp)
+```
+
+To use the problem instance creation and solver functionalities of TxnSP, the main header file should be included as below.
+
+```
+#include <TxnSP/TxnSP.h>
+```
+
+To be able to also use the Analyzer and Evaluator modules, the following code should be used.
+
+```
+#include <TxnSP/TxnSPTest.h>
 ```
