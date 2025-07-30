@@ -252,10 +252,12 @@ namespace TxnSP
                 case ES:
                     bl = esVal[i][j];
                     break;
-
-                case MIP:
+                
+                #ifdef ENABLE_MIP
+                case MIP:                
                     bl = mipVal[i][j];
                     break;
+                #endif
                 }
 
                 totDpeMatch += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
@@ -294,10 +296,12 @@ namespace TxnSP
         case ES:
             bl = totEsVal;
             break;
-
+        
+        #ifdef ENABLE_MIP
         case MIP:
             bl = totMipVal;
             break;
+        #endif
         }
 
         totDpeDiff = (totDpeVal - bl) / bl;
@@ -656,10 +660,12 @@ namespace TxnSP
                 case ES:
                     bl = esVal[i][j];
                     break;
-
+                
+                #ifdef ENABLE_MIP
                 case MIP:
                     bl = mipVal[i][j];
                     break;
+                #endif
                 }
 
                 totDpeMatch[prbInds[i][j]] += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
@@ -701,9 +707,11 @@ namespace TxnSP
                 bl = totEsVal[i];
                 break;
 
+            #ifdef ENABLE_MIP
             case MIP:
                 bl = totMipVal[i];
                 break;
+            #endif
             }
 
             totDpeDiff[i] = (totDpeVal[i] - bl) / bl;
