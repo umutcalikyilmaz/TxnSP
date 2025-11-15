@@ -8,6 +8,10 @@
 #include "TxnSP/Solvers/SASolver.h"
 #include "TxnSP/Structs/EvaluatorInput.h"
 
+#ifdef ENABLE_MIP
+    #include "TxnSP/Solvers/MIPSolver.h"
+#endif
+
 namespace TxnSP
 {
     void ThreadFunction(Problem** problems, int prbNum, bool es, bool mip, bool dp_exact, bool dp_approximate,

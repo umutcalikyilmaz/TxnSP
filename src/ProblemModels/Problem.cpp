@@ -37,7 +37,7 @@ namespace TxnSP
         UniformRandomDoubleGenerator* urnd;
         UniformRandomDoubleGenerator rnd2(0, 1);
 
-        if(dist == NormalDistribution)
+        if(dist == ProbabilityDistribution::Normal)
         {
             nrnd = new NormalRandomNumberGenerator(distributionparameter1, distributionParameter2);
         }
@@ -52,7 +52,7 @@ namespace TxnSP
         {
             do
             {
-                lengths_[i] = (dist == NormalDistribution) ? nrnd->generate() : urnd->generate();
+                lengths_[i] = (dist == ProbabilityDistribution::Normal) ? nrnd->generate() : urnd->generate();
             }
             while(lengths_[i] < 0);
             
@@ -80,7 +80,7 @@ namespace TxnSP
 			}
 		}
 
-        if(dist == NormalDistribution)
+        if(dist == ProbabilityDistribution::Normal)
         {
             delete nrnd;
         }

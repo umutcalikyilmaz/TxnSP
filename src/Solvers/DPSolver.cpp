@@ -211,7 +211,7 @@ namespace TxnSP
             machineNumber_ = input.prb->getMachineNumber();
             type_ = input.DP_SolutionType;
             subsetNumber_ = combination(jobNumber_, jobNumber_ / 2);
-            scheduleNumber_ = type_ == Approximate ? 2.5 * subsetNumber_ : log(jobNumber_) * pow(jobNumber_ * subsetNumber_, 2) / factorial(machineNumber_ - 1);
+            scheduleNumber_ = type_ == SolutionType::Approximate ? 2.5 * subsetNumber_ : log(jobNumber_) * pow(jobNumber_ * subsetNumber_, 2) / factorial(machineNumber_ - 1);
 
             if(init_)
             {                
@@ -224,7 +224,7 @@ namespace TxnSP
             init_ = true;
         }
 
-        return type_ == Approximate ? solveApproximate(input.prb) : solveExact(input.prb);
+        return type_ == SolutionType::Approximate ? solveApproximate(input.prb) : solveExact(input.prb);
     }
 
     DPSolver::~DPSolver()

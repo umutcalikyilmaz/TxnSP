@@ -48,7 +48,7 @@ namespace TxnSP
 
         if(dp_exact)
         {
-            inp.DP_SolutionType = Exact;
+            inp.DP_SolutionType = SolutionType::Exact;
 
             for(int i = 0; i < prbNum; i++)
             {                
@@ -63,7 +63,7 @@ namespace TxnSP
 
         if(dp_approximate)
         {
-            inp.DP_SolutionType = Approximate;
+            inp.DP_SolutionType = SolutionType::Approximate;
             
             for(int i = 0; i < prbNum; i++)
             {                
@@ -245,16 +245,16 @@ namespace TxnSP
 
                 switch (baseline)
                 {
-                case DP:
+                case SolverType::DP:
                     bl = dpeVal[i][j];
                     break;
 
-                case ES:
+                case SolverType::ES:
                     bl = esVal[i][j];
                     break;
                 
                 #ifdef ENABLE_MIP
-                case MIP:                
+                case SolverType::MIP:                
                     bl = mipVal[i][j];
                     break;
                 #endif
@@ -289,16 +289,16 @@ namespace TxnSP
 
         switch (baseline)
         {
-        case DP:
+        case SolverType::DP:
             bl = totDpeVal;
             break;
 
-        case ES:
+        case SolverType::ES:
             bl = totEsVal;
             break;
         
         #ifdef ENABLE_MIP
-        case MIP:
+        case SolverType::MIP:
             bl = totMipVal;
             break;
         #endif
@@ -331,7 +331,7 @@ namespace TxnSP
             for(int j = 0; j < saTempNum; j++)
             {            
                 {
-                    sstream << "SA_" << inp.SA_DecrementTypesAndParameters[i].first << "_" << inp.SA_DecrementTypesAndParameters[i].second << "_" << inp.SA_MaxTemperatures[j] << ",";
+                    sstream << "SA_" << static_cast<int>(inp.SA_DecrementTypesAndParameters[i].first) << "_" << inp.SA_DecrementTypesAndParameters[i].second << "_" << inp.SA_MaxTemperatures[j] << ",";
                 }
             }
         }
@@ -583,7 +583,7 @@ namespace TxnSP
 
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], UniformDistribution, inp.uniformParameters[l].first, inp.uniformParameters[l].second, inp.conflictParities[k]);
+                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], ProbabilityDistribution::Uniform, inp.uniformParameters[l].first, inp.uniformParameters[l].second, inp.conflictParities[k]);
                             thProblems[threadInd][count] = problems[c][m];
                             prbInds[threadInd][count] = c;
                             count++;
@@ -605,7 +605,7 @@ namespace TxnSP
 
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], NormalDistribution, inp.normalParameters[l].first, inp.normalParameters[l].second, inp.conflictParities[k]);
+                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], ProbabilityDistribution::Normal , inp.normalParameters[l].first, inp.normalParameters[l].second, inp.conflictParities[k]);
                             thProblems[threadInd][count] = problems[c][m];
                             prbInds[threadInd][count] = c;
                             count++;
@@ -653,16 +653,16 @@ namespace TxnSP
 
                 switch (baseline)
                 {
-                case DP:
+                case SolverType::DP:
                     bl = dpeVal[i][j];
                     break;
 
-                case ES:
+                case SolverType::ES:
                     bl = esVal[i][j];
                     break;
                 
                 #ifdef ENABLE_MIP
-                case MIP:
+                case SolverType::MIP:
                     bl = mipVal[i][j];
                     break;
                 #endif
@@ -699,16 +699,16 @@ namespace TxnSP
 
             switch (baseline)
             {
-            case DP:
+            case SolverType::DP:
                 bl = totDpeVal[i];
                 break;
 
-            case ES:
+            case SolverType::ES:
                 bl = totEsVal[i];
                 break;
 
             #ifdef ENABLE_MIP
-            case MIP:
+            case SolverType::MIP:
                 bl = totMipVal[i];
                 break;
             #endif
@@ -744,7 +744,7 @@ namespace TxnSP
         {
             for(int j = 0; j < saDecNum; j++)
             {
-                sstream << "SA_" << inp.SA_DecrementTypesAndParameters[j].first << "_" << inp.SA_DecrementTypesAndParameters[j].second << "_" << inp.SA_MaxTemperatures[i] << ",";
+                sstream << "SA_" << static_cast<int>(inp.SA_DecrementTypesAndParameters[j].first) << "_" << inp.SA_DecrementTypesAndParameters[j].second << "_" << inp.SA_MaxTemperatures[i] << ",";
             }
         }
 
@@ -977,7 +977,7 @@ namespace TxnSP
             }
         #endif
 
-        if(inp.baseline == SA)
+        if(inp.baseline == SolverType::SA)
         {
             throw "Simulated Annealing solutions cannot be used as baselines.";
         }

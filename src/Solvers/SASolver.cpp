@@ -60,13 +60,13 @@ namespace TxnSP
 
 		switch (input.SA_DecrementType)
 		{
-		case Exponential:
+		case TemperatureEvolution::Exponential:
 			decrementPtr_ = &SASolver::decrementExponential;
 			break;
-		case Linear:
+		case TemperatureEvolution::Linear:
 			decrementPtr_ = &SASolver::decrementLinear;
 			break;
-		case Slow:
+		case TemperatureEvolution::Slow:
 			decrementPtr_ = &SASolver::decrementSlow;
 			break;
 		}
@@ -81,7 +81,7 @@ namespace TxnSP
 
 		int ind1;
 		int ind2;
-		int decrementType = input.SA_DecrementType;
+		int decrementType = static_cast<int>(input.SA_DecrementType);
 		double cost;
 		double tempCost;
 		double bestCost;		

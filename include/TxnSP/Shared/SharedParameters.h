@@ -1,20 +1,21 @@
 #pragma once
+#include <cstdint>
 
 namespace TxnSP
 {
-    enum ProbabilityDistribution
+    enum class ProbabilityDistribution : uint8_t
 	{
-		UniformDistribution,
-		NormalDistribution
+		Uniform,
+		Normal
 	};
 
-	enum SolutionType
+	enum class SolutionType : uint8_t
 	{
 		Approximate,
 		Exact
 	};
 
-	enum TemperatureEvolution
+	enum class TemperatureEvolution : uint8_t
 	{
 		Exponential,
 		Linear,
@@ -23,7 +24,7 @@ namespace TxnSP
 
 
 	#ifdef ENABLE_MIP
-	enum SolverType
+	enum class SolverType : uint8_t
 	{
 		DP,
 		ES,
@@ -31,7 +32,7 @@ namespace TxnSP
 		SA
 	};
 	#else
-	enum SolverType
+	enum class SolverType : uint8_t
 	{
 		DP,
 		ES,

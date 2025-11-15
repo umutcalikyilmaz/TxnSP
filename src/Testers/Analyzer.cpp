@@ -192,7 +192,7 @@ namespace TxnSP
         stringstream sstream;
         sstream.setf(std::ios::fixed);
         sstream.precision(2);
-        sstream << inp.directory << n << "_" << m << "_" << (dist == NormalDistribution ? "n" : "u") << "_" << para1 << "_" << para2 << "_" << cpStep << "_" << prbNum << "_" << ".csv";
+        sstream << inp.directory << n << "_" << m << "_" << (dist == ProbabilityDistribution::Normal ? "n" : "u") << "_" << para1 << "_" << para2 << "_" << cpStep << "_" << prbNum << "_" << ".csv";
         file.open(sstream.str(), fstream::out | fstream::trunc);
         
         sstream.str(string());
