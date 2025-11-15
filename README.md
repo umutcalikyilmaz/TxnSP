@@ -52,24 +52,24 @@ In TxnSP, a problem instance can be created in two ways. The first one is random
 ```c++
 // Problem creation using normal distribution
 TxnSP::Problem problem(
-    jobNumber,                     // int: Number of jobs
-    machineNumber,                 // int: Number of machines
-    TxnSP::NormalDistribution,     // Distribution type
-    lengthMean,                    // double: Mean of job lengths
-    lengthStd,                     // double: Standard deviation of job lengths
-    conflictParity                 // double: Parity of conflicting pair of jobs
+    jobNumber,                                 // int: Number of jobs
+    machineNumber,                             // int: Number of machines
+    TxnSP::ProbabilityDistribution::Normal,    // Distribution type
+    lengthMean,                                // double: Mean of job lengths
+    lengthStd,                                 // double: Standard deviation of job lengths
+    conflictParity                             // double: Parity of conflicting pair of jobs
 );
 ```
 
 ```c++
 // Problem creation using uniform distribution
 TxnSP::Problem problem(
-    jobNumber,                     // int: Number of jobs
-    machineNumber,                 // int: Number of machines
-    TxnSP::UniformDistribution,    // Distribution type
-    lowerLimit,                    // double: Lower limit of job lengths
-    upperLimit,                    // double: Upper limit of job lengths
-    conflictParity                 // double: Parity of conflicting pair of jobs
+    jobNumber,                                 // int: Number of jobs
+    machineNumber,                             // int: Number of machines
+    TxnSP::ProbabilityDistribution::Uniform,   // Distribution type
+    lowerLimit,                                // double: Lower limit of job lengths
+    upperLimit,                                // double: Upper limit of job lengths
+    conflictParity                             // double: Parity of conflicting pair of jobs
 );
 ```
 
@@ -95,8 +95,8 @@ TxnSP::DPSolver dps;
 
 // Prepare the input structure
 TxnSP::SolverInput input;
-input.prb = problem;                         // Assign the problem instance
-input.DP_SolutionType = TxnSP::Exact;        // Use exact solution method, other option is TxnSP::Approximate
+input.prb = problem;                                     // Assign the problem instance
+input.DP_SolutionType = TxnSP::SolutionType::Exact;      // Use exact solution method, other option is TxnSP::Approximate
 
 // Solve the problem and get the output
 TxnSP::SolverOutput* output = dps.solve(input);  // Returns a pointer to solution
@@ -136,10 +136,10 @@ TxnSP::SASolver sas;
 
 // Prepare the input structure
 TxnSP::SolverInput input;
-input.prb = problem;            // Assign the problem instance
-input.SA_MaxTemperature = maxTemperature;             // double: Set maximum temperature
-input.SA_DecrementType = TxnSP::Linear;               // Use linear temperature decrement, other optionss are TxnSP::Logarithmic and TxnSP::Slow
-input.SA_DecrementParameter = decrementParameter;     // double: Cooling rate
+input.prb = problem;                                             // Assign the problem instance
+input.SA_MaxTemperature = maxTemperature;                        // double: Set maximum temperature
+input.SA_DecrementType = TxnSP::TemperatureEvolution::Linear;    // Use linear temperature decrement, other optionss are TxnSP::Logarithmic and TxnSP::Slow
+input.SA_DecrementParameter = decrementParameter;                // double: Cooling rate
 
 // Solve the problem and get the output
 TxnSP::SolverOutput* output = sas.solve(input);  // Returns a pointer to solution
