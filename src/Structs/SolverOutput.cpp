@@ -46,10 +46,10 @@ namespace TxnSP
 				}
 			}
 
-			startingTimes.push_back(temp);
-			endingTimes.push_back(temp + t[i]);
-			processingTimes.push_back(endingTimes[i]);
-			assignments.push_back(i);
+			startingTimes[i] = temp;
+			endingTimes[i] =  temp + t[i];
+			processingTimes[i] = endingTimes[i];
+			assignments[i] = i;
 			
 			if(makespan < processingTimes[i])
 			{
