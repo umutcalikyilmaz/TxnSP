@@ -1,4 +1,4 @@
-# TxnSp
+# TxnSP
 TxnSP is a software library used to create instances of the transaction scheduling problem and solving them. Thje library includes 4 solvers for the problem. It also contains modules for analyzing problem instances and evaluating the performance of the included solvers.
 
 ## Citation
