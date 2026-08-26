@@ -2,7 +2,9 @@
 TxnSP is a software library used to create instances of the transaction scheduling problem and solving them. Thje library includes 4 solvers for the problem. It also contains modules for analyzing problem instances and evaluating the performance of the included solvers.
 
 ## Citation
-TxnSP is developed as a part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The results of the study is compiled in a research paper, which is pending approval for publication. The information for citation will be provided after the publication.
+TxnSP is developed as a part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The study is presented in the paper given below.
+
+[OptiMA: A Transaction-Based Framework with Throughput Optimization for Very Complex Multi-Agent Systems](https://arxiv.org/pdf/2511.03761)
 
 ## Installation
 TxnSP is designed for Debian and currently it is not compatible with Windows or MacOS. For standard installation, the following bash instructions should be executed in the project's root folder.
