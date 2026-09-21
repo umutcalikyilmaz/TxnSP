@@ -2,102 +2,99 @@
 
 namespace TxnSP
 {
-    void ThreadFunction(Problem** problems, int prbNum, bool es, bool mip, bool dp_exact, bool dp_approximate,
-    const std::vector<std::pair<TemperatureEvolution,double>> SA_DecrementTypesAndParameters, 
-    const std::vector<double> SA_MaxTemperatures, double* dpeTime, double* dpeVal, double* dpaTime, double* dpaVal,
-    double* esTime, double* esVal, double* mipTime, double* mipVal, double** saTime, double** saVal)
+    bool Evaluator::pullProblem(Problem*& prb, int& ind)
+    {
+        std::lock_guard<std::mutex> lock(problemLock_);
+
+        if(problemQueue_.empty())
+        {
+            return false;
+        }
+
+        prb = std::move(problemQueue_.front());
+        ind = indexQueue_.front();
+        problemQueue_.pop();
+        indexQueue_.pop();
+        return true;
+    }
+
+    void Evaluator::threadFunction(bool es, bool mip, bool dp_exact,bool dp_approximate,
+        const std::vector<std::pair<TemperatureEvolution,double>>& SA_DecrementTypesAndParameters, 
+        const std::vector<double>& SA_MaxTemperatures, std::vector<int>& indices,
+        std::vector<double>& dpeTime, std::vector<double>& dpeVal, std::vector<double>& dpaTime,
+        std::vector<double>& dpaVal, std::vector<double>& esTime, std::vector<double>& esVal,
+        std::vector<double>& mipTime, std::vector<double>& mipVal,
+        std::vector<std::vector<double>>& saTime, std::vector<std::vector<double>>& saVal)
     {
         
         DPSolver dps;
         ESSolver ess;
         SASolver sas;
-        SolverInput inp;    
+        SolverInput inp;
 
         #ifdef ENABLE_MIP
-            MIPSolver mips;
+        MIPSolver mips;
         #endif
 
-        if(es)
+        Problem* prb;
+        int ind;
+
+        while(pullProblem(prb, ind))
         {
-            for(int i = 0; i < prbNum; i++)
-            {                
-                inp.prb = problems[i];
-                SolverOutput* out = ess.solve(inp);
-                esTime[i] = out->runtime;
-                esVal[i] = out->makespan;
+            indices.push_back(ind);
 
-                delete out;
+            if(es)
+            {
+                inp.prb = prb;
+                SolverOutput out = ess.solve(inp);
+                esTime.push_back(out.runtime);
+                esVal.push_back(out.makespan);
             }
-        }
 
-        #ifdef ENABLE_MIP
+            #ifdef ENABLE_MIP
             if(mip)
             {
-                for(int i = 0; i < prbNum; i++)
-                {                
-                    inp.prb = problems[i];
-                    SolverOutput* out = mips.solve(inp);
-                    mipTime[i] = out->runtime;
-                    mipVal[i] = out->makespan;
-
-                    delete out;
-                }
+                inp.prb = prb;
+                SolverOutput out = mips.solve(inp);
+                mipTime.push_back(out.runtime);
+                mipVal.push_back(out.makespan);
             }
-        #endif
-        
+            #endif
 
-        if(dp_exact)
-        {
-            inp.DP_SolutionType = SolutionType::Exact;
-
-            for(int i = 0; i < prbNum; i++)
-            {                
-                inp.prb = problems[i];
-                SolverOutput* out = dps.solve(inp);
-                dpeTime[i] = out->runtime;
-                dpeVal[i] = out->makespan;
-
-                delete out;
-            }
-        }
-
-        if(dp_approximate)
-        {
-            inp.DP_SolutionType = SolutionType::Approximate;
-            
-            for(int i = 0; i < prbNum; i++)
-            {                
-                inp.prb = problems[i];
-                SolverOutput* out = dps.solve(inp);
-                dpaTime[i] = out->runtime;
-                dpaVal[i] = out->makespan;
-
-                delete out;
-            }
-        }
-
-        int c = 0;
-
-        for(std::pair<TemperatureEvolution,double> dtp : SA_DecrementTypesAndParameters)
-        {
-            inp.SA_DecrementType = dtp.first;
-            inp.SA_DecrementParameter = dtp.second;
-
-            for(double T : SA_MaxTemperatures)
+            if(dp_exact)
             {
-                inp.SA_MaxTemperature = T;
+                inp.DP_SolutionType = SolutionType::Exact;
+                inp.prb = prb;
+                SolverOutput out = dps.solve(inp);
+                dpeTime.push_back(out.runtime);
+                dpeVal.push_back(out.makespan);
+            }
 
-                for(int i = 0; i < prbNum; i++)
+            if(dp_approximate)
+            {
+                inp.DP_SolutionType = SolutionType::Approximate;
+                inp.prb = prb;
+                SolverOutput out = dps.solve(inp);
+                dpaTime.push_back(out.runtime);
+                dpaVal.push_back(out.makespan);
+            }
+
+            int c = 0;
+
+            for(std::pair<TemperatureEvolution,double> dtp : SA_DecrementTypesAndParameters)
+            {
+                inp.SA_DecrementType = dtp.first;
+                inp.SA_DecrementParameter = dtp.second;
+    
+                for(double T : SA_MaxTemperatures)
                 {
-                    inp.prb = problems[i];
-                    SolverOutput* out = sas.solve(inp);
-                    saTime[c][i] = out->runtime;
-                    saVal[c][i] = out->makespan;
-
-                    delete out;
+                    inp.SA_MaxTemperature = T;    
+                    inp.prb = prb;
+                    SolverOutput out = sas.solve(inp);
+                    saTime[c].push_back(out.runtime);
+                    saVal[c].push_back(out.makespan);    
+                    c++;
                 }
-
-                c++;
             }
         }
     }
@@ -119,19 +116,18 @@ namespace TxnSP
         int saDecNum = inp.SA_DecrementTypesAndParameters.size();
         int saNum = saTempNum * saDecNum;
         SolverType baseline = inp.baseline;
-        Problem*** thProblems = new Problem**[threadCount];
-        thread* threads = new thread[threadCount];
-        int* prbNums = new int[threadCount];
-        double** dpeTime = new double*[threadCount];
-        double** dpeVal = new double*[threadCount];
-        double** dpaTime = new double*[threadCount];
-        double** dpaVal = new double*[threadCount];
-        double** esTime = new double*[threadCount];
-        double** esVal = new double*[threadCount];
-        double** mipTime = new double*[threadCount];
-        double** mipVal = new double*[threadCount];
-        double*** saTime = new double**[threadCount];
-        double*** saVal = new double**[threadCount];
+        std::vector<std::jthread> threads;
+        std::vector<std::vector<int>> indices(threadCount);
+        std::vector<std::vector<double>> dpeTime(threadCount);
+        std::vector<std::vector<double>> dpeVal(threadCount);
+        std::vector<std::vector<double>> dpaTime(threadCount);
+        std::vector<std::vector<double>> dpaVal(threadCount);
+        std::vector<std::vector<double>> esTime(threadCount);
+        std::vector<std::vector<double>> esVal(threadCount);
+        std::vector<std::vector<double>> mipTime(threadCount);
+        std::vector<std::vector<double>> mipVal(threadCount);
+        std::vector<std::vector<std::vector<double>>> saTime(threadCount);
+        std::vector<std::vector<std::vector<double>>> saVal(threadCount);
         double totDpeTime = 0; 
         double totDpeVal = 0;
         double totDpeMatch = 0;
@@ -146,100 +142,65 @@ namespace TxnSP
         double totMipVal = 0;
         double totMipMatch = 0;
         double totMipDiff = 0;
-        double* totSaTime = new double[saNum];
-        double* totSaVal = new double[saNum];
-        double* totSaMatch = new double[saNum];
-        double* totSaDiff = new double[saNum];
+        std::vector<double> totSaTime(saNum);
+        std::vector<double> totSaVal(saNum);
+        std::vector<double> totSaMatch(saNum);
+        std::vector<double> totSaDiff(saNum);
 
-        for(int i = 0; i < saNum; i++)
-        {
-            totSaTime[i] = 0;
-            totSaVal[i] = 0;
-            totSaMatch[i] = 0;
-            totSaDiff[i] = 0;
-        }
-
-        for(int i = 0; i < threadCount - 1; i++)
-        {
-            prbNums[i] = threadStep;
-            esTime[i] = new double[threadStep];
-            esVal[i] = new double[threadStep];
-            mipTime[i] = new double[threadStep];
-            mipVal[i] = new double[threadStep];
-            dpeTime[i] = new double[threadStep];
-            dpeVal[i] = new double[threadStep];
-            dpaTime[i] = new double[threadStep];
-            dpaVal[i] = new double[threadStep];            
-            saTime[i] = new double*[saNum];
-            saVal[i] = new double*[saNum];
-
-            for(int j = 0; j < saNum; j++)
-            {
-                saTime[i][j] = new double[threadStep];
-                saVal[i][j] = new double[threadStep];
-            }
-        }
-
-        prbNums[threadCount - 1] = totPrbNum - (threadCount - 1) * threadStep;
-        esTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        esVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        mipTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        mipVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpeTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpeVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpaTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpaVal[threadCount - 1] = new double[prbNums[threadCount - 1]];            
-        saTime[threadCount - 1] = new double*[saNum];
-        saVal[threadCount - 1] = new double*[saNum];
-
-        for(int j = 0; j < saNum; j++)
-        {
-            saTime[threadCount - 1][j] = new double[prbNums[threadCount - 1]];
-            saVal[threadCount - 1][j] = new double[prbNums[threadCount - 1]];
-        }
-
-        int threadInd = 0;
-        int count = 0;
         int c = 0;
-        thProblems[0] = new Problem*[prbNums[0]];
 
         for(Problem* prb : inp.problems)
         {
-            thProblems[threadInd][count] = prb;
-            count++;
+            problemQueue_.emplace(prb);
+            indexQueue_.push(c);
+            c++;
+        }
 
-            if(count == threadStep && threadInd != threadCount - 1)
+        for(int i = 0; i < threadCount; i++)
+        {
+            saTime[i].reserve(saNum);
+            saVal[i].reserve(saNum);
+
+            threads.emplace_back(std::jthread([this, es = inp.es, mip = inp.mip, dp_exact = inp.dp_exact,
+                dp_approximate = inp.dp_approximate, &saDecParam = inp.SA_DecrementTypesAndParameters,
+                &saMaxTemp = inp.SA_MaxTemperatures, &ind = indices[i], &dpet = dpeTime[i], &dpev = dpeVal[i],
+                &dpat = dpaTime[i], &dpav = dpaVal[i], &est = esTime[i], &esv = esVal[i], &mipt = mipTime[i],
+                &mipv = mipVal[i], &sat = saTime[i], &sav = saVal[i]]()
             {
-                count = 0;
-                threadInd++;
-                thProblems[threadInd] = new Problem*[prbNums[threadInd]];
-            } 
+                threadFunction(es, mip, dp_exact, dp_approximate, saDecParam, saMaxTemp, ind, dpet, dpev,
+                    dpat, dpav, est, esv, mipt, mipv, sat, sav);
+            }));
         }
+
+        threads.clear();
 
         for(int i = 0; i < threadCount; i++)
         {
-            threads[i] = thread(ThreadFunction, thProblems[i], prbNums[i], inp.es, inp.mip, inp.dp_exact, inp.dp_approximate,
-            inp.SA_DecrementTypesAndParameters, inp.SA_MaxTemperatures, dpeTime[i], dpeVal[i], dpaTime[i], dpaVal[i], 
-            esTime[i], esVal[i], mipTime[i], mipVal[i], saTime[i], saVal[i]);
-        }
-
-        for(int i = 0; i < threadCount; i++)
-        {
-            threads[i].join();
-        }
-
-        for(int i = 0; i < threadCount; i++)
-        {
-            for(int j = 0; j < prbNums[i]; j++)
+            for(int j = 0; j < indices[i].size(); j++)
             {
-                totDpeTime += dpeTime[i][j];
-                totDpeVal += dpeVal[i][j];
-                totDpaTime += dpaTime[i][j];
-                totDpaVal += dpaVal[i][j];
-                totEsTime += esTime[i][j];
-                totEsVal += esVal[i][j];
-                totMipTime += mipTime[i][j];
-                totMipVal += mipVal[i][j];
+                if(inp.dp_exact)
+                {
+                    totDpeTime += dpeTime[i][j];
+                    totDpeVal += dpeVal[i][j];
+                }
+                
+                if(inp.dp_approximate)
+                {
+                    totDpaTime += dpaTime[i][j];
+                    totDpaVal += dpaVal[i][j];
+                }
+
+                if(inp.es)
+                {
+                    totEsTime += esTime[i][j];
+                    totEsVal += esVal[i][j];
+                }
+                
+                if(inp.mip)
+                {
+                    totMipTime += mipTime[i][j];
+                    totMipVal += mipVal[i][j];
+                }                
 
                 double bl;
 
@@ -260,10 +221,21 @@ namespace TxnSP
                 #endif
                 }
 
-                totDpeMatch += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
-                totDpaMatch += ((dpaVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
-                totMipMatch += ((mipVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                if(inp.dp_exact)
+                {
+                    totDpeMatch += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
 
+                if(inp.dp_approximate)
+                {
+                    totDpaMatch += ((dpaVal[i][j] - bl) < 0.000001 && (dpaVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
+                
+                if(inp.mip)
+                {
+                    totMipMatch += ((mipVal[i][j] - bl) < 0.000001 && (mipVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
+                
                 for(int k = 0; k < saNum; k++)
                 {
                     totSaTime[k] += saTime[i][k][j];
@@ -316,12 +288,26 @@ namespace TxnSP
             totSaDiff[i] = (totSaVal[i] - bl) / bl;
         }
 
-        fstream file;
+        std::fstream file;
         auto time = std::chrono::system_clock::now();
-        file.open(inp.directory + "/preset" + to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".csv", fstream::out | fstream::trunc);
+
+        const std::filesystem::path filePath = std::filesystem::path(std::getenv("HOME")) / ".TxnSP";
+
+        try
+        {
+            std::filesystem::create_directory(filePath);
+            std::filesystem::create_directory(filePath / "evaluation");
+            std::filesystem::create_directory(filePath / "evaluation" / "preset");
+            file.open(filePath / "evaluation" / "preset" / (std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+            + ".csv"), std::fstream::out | std::fstream::trunc);
+        }
+        catch(const std::filesystem::filesystem_error& e)
+        {
+            std::cerr << "Cannot open result file: " << e.what() << '\n';
+        }
 
         c = 0;
-        stringstream sstream;
+        std::stringstream sstream;
         sstream.setf(std::ios::fixed);
         sstream.precision(2);
         sstream << "ES,DPE,DPA,MIP,";
@@ -337,106 +323,68 @@ namespace TxnSP
         }
         
 
-        string row = sstream.str();
+        std::string row = sstream.str();
         row.pop_back();
         file << sstream.str() << row << "\n";
-        sstream.str(string());
+        sstream.str(std::string());
 
-        sstream << to_string(totEsTime) << "," << to_string(totDpeTime) << "," << to_string(totDpaTime)<< "," << 
-        to_string(totMipTime) << ",";
+        sstream << std::to_string(totEsTime) << "," << std::to_string(totDpeTime) << "," <<
+            std::to_string(totDpaTime)<< "," << std::to_string(totMipTime) << ",";
 
         for(int m = 0; m < saNum; m++)
         {
-            sstream << to_string(totSaTime[m]) << ",";
+            sstream << std::to_string(totSaTime[m]) << ",";
         }
 
         row = sstream.str();
         row.pop_back();
         file << row << "\n";
-        sstream.str(string());
+        sstream.str(std::string());
 
 
-        sstream << to_string(totEsVal) << "," << to_string(totDpeVal) << "," << to_string(totDpaVal)<< "," << 
-        to_string(totMipVal) << ",";
+        sstream << std::to_string(totEsVal) << "," << std::to_string(totDpeVal) << "," << std::to_string(totDpaVal)
+            << "," << std::to_string(totMipVal) << ",";
 
         for(int m = 0; m < saNum; m++)
         {
-            sstream << to_string(totSaVal[m]) << ",";
+            sstream << std::to_string(totSaVal[m]) << ",";
         }
 
         row = sstream.str();
         row.pop_back();
         file << row << "\n";
-        sstream.str(string());
+        sstream.str(std::string());
 
 
-        sstream << "1," << to_string(totDpeMatch) << "," << to_string(totDpaMatch)<< "," << to_string(totMipMatch) << ",";
+        sstream << "1," << std::to_string(totDpeMatch) << "," << std::to_string(totDpaMatch)<< "," <<
+            std::to_string(totMipMatch) << ",";
 
         for(int m = 0; m < saNum; m++)
         {
-            sstream << to_string(totSaMatch[m]) << ",";
+            sstream << std::to_string(totSaMatch[m]) << ",";
         }
 
         row = sstream.str();
         row.pop_back();
         file << row << "\n";
-        sstream.str(string());
+        sstream.str(std::string());
 
 
-        sstream << "0," << to_string(totDpeDiff) << "," << to_string(totDpaDiff)<< "," << to_string(totMipDiff) << ",";
+        sstream << "0," << std::to_string(totDpeDiff) << "," << std::to_string(totDpaDiff)<< "," <<
+            std::to_string(totMipDiff) << ",";
 
         for(int m = 0; m < saNum; m++)
         {
-            sstream << to_string(totSaDiff[m]) << ",";
+            sstream << std::to_string(totSaDiff[m]) << ",";
         }
 
         row = sstream.str();
         row.pop_back();
         file << row << "\n";
-        sstream.str(string());
+        sstream.str(std::string());
 
         file.flush();
-        file.close();  
-
-        for(int i = 0; i < threadCount; i++)
-        {
-            delete[] thProblems[i];
-            delete[] dpeTime[i];
-            delete[] dpeVal[i];
-            delete[] dpaTime[i];
-            delete[] dpaVal[i];
-            delete[] esTime[i];
-            delete[] esVal[i];
-            delete[] mipTime[i];
-            delete[] mipVal[i];
-
-            for(int j = 0; j < saNum; j++)
-            {
-                delete[] saTime[i][j];
-                delete[] saVal[i][j];
-            }
-
-            delete[] saTime[i];
-            delete[] saVal[i];
-        }
-
-        delete[] thProblems;
-        delete[] threads;
-        delete[] prbNums;
-        delete[] dpeTime;
-        delete[] dpeVal;
-        delete[] dpaTime;
-        delete[] dpaVal;
-        delete[] esTime;
-        delete[] esVal;
-        delete[] mipTime;
-        delete[] mipVal;
-        delete[] saTime;
-        delete[] saVal;
-        delete[] totSaTime;
-        delete[] totSaVal;
-        delete[] totSaMatch;
-        delete[] totSaDiff;
+        file.close();
     }
 
     void Evaluator::evaluateRandom(const EvaluatorInput& inp)
@@ -456,120 +404,48 @@ namespace TxnSP
         int saDecNum = inp.SA_DecrementTypesAndParameters.size();
         int saNum = saTempNum * saDecNum;
         SolverType baseline = inp.baseline;
-        Problem*** problems = new Problem**[prbConfNum];
-        Problem*** thProblems = new Problem**[threadCount];
-        thread* threads = new thread[threadCount];
-        int* prbNums = new int[threadCount];
-        int** prbInds = new int*[threadCount];
-        double** dpeTime = new double*[threadCount];
-        double** dpeVal = new double*[threadCount];
-        double** dpaTime = new double*[threadCount];
-        double** dpaVal = new double*[threadCount];
-        double** esTime = new double*[threadCount];
-        double** esVal = new double*[threadCount];
-        double** mipTime = new double*[threadCount];
-        double** mipVal = new double*[threadCount];
-        double*** saTime = new double**[threadCount];
-        double*** saVal = new double**[threadCount];
-        fstream* files = new fstream[prbConfNum];
-        double* totDpeTime = new double[prbConfNum];
-        double* totDpeVal = new double[prbConfNum];
-        double* totDpeMatch = new double[prbConfNum];
-        double* totDpeDiff = new double[prbConfNum];
-        double* totDpaTime = new double[prbConfNum];
-        double* totDpaVal = new double[prbConfNum];
-        double* totDpaMatch = new double[prbConfNum];
-        double* totDpaDiff = new double[prbConfNum];
-        double* totEsTime = new double[prbConfNum];
-        double* totEsVal = new double[prbConfNum];
-        double* totMipTime = new double[prbConfNum];
-        double* totMipVal = new double[prbConfNum];
-        double* totMipMatch = new double[prbConfNum];
-        double* totMipDiff = new double[prbConfNum];
-        double** totSaTime = new double*[saNum];
-        double** totSaVal = new double*[saNum];
-        double** totSaMatch = new double*[saNum];
-        double** totSaDiff = new double*[saNum];
-
-        for(int i = 0; i < prbConfNum; i++)
-        {
-            totDpeTime[i] = 0;
-            totDpeVal[i] = 0;
-            totDpeMatch[i] = 0;
-            totDpeDiff[i] = 0;
-            totDpaTime[i] = 0;
-            totDpaVal[i] = 0;
-            totDpaMatch[i] = 0;
-            totDpaDiff[i] = 0;
-            totEsTime[i] = 0;
-            totEsVal[i] = 0;
-            totMipTime[i] = 0;
-            totMipVal[i] = 0;
-            totMipMatch[i] = 0;
-            totMipDiff[i] = 0;
-        }
+        std::vector<std::jthread> threads;
+        std::vector<std::vector<int>> indices(threadCount);
+        std::vector<std::vector<double>> dpeTime(threadCount);
+        std::vector<std::vector<double>> dpeVal(threadCount);
+        std::vector<std::vector<double>> dpaTime(threadCount);
+        std::vector<std::vector<double>> dpaVal(threadCount);
+        std::vector<std::vector<double>> esTime(threadCount);
+        std::vector<std::vector<double>> esVal(threadCount);
+        std::vector<std::vector<double>> mipTime(threadCount);
+        std::vector<std::vector<double>> mipVal(threadCount);
+        std::vector<std::vector<std::vector<double>>> saTime(threadCount);
+        std::vector<std::vector<std::vector<double>>> saVal(threadCount);
+        std::vector<std::fstream> files(prbConfNum);
+        std::vector<double> totDpeTime(prbConfNum);
+        std::vector<double> totDpeVal(prbConfNum);
+        std::vector<double> totDpeMatch(prbConfNum);
+        std::vector<double> totDpeDiff(prbConfNum);
+        std::vector<double> totDpaTime(prbConfNum);
+        std::vector<double> totDpaVal(prbConfNum);
+        std::vector<double> totDpaMatch(prbConfNum);
+        std::vector<double> totDpaDiff(prbConfNum);
+        std::vector<double> totEsTime(prbConfNum);
+        std::vector<double> totEsVal(prbConfNum);
+        std::vector<double> totMipTime(prbConfNum);
+        std::vector<double> totMipVal(prbConfNum);
+        std::vector<double> totMipMatch(prbConfNum);
+        std::vector<double> totMipDiff(prbConfNum);
+        std::vector<std::vector<double>> totSaTime(saNum);
+        std::vector<std::vector<double>> totSaVal(saNum);
+        std::vector<std::vector<double>> totSaMatch(saNum);
+        std::vector<std::vector<double>> totSaDiff(saNum);
+        std::vector<std::unique_ptr<Problem>> problems;
 
         for(int i = 0; i < saNum; i++)
         {
-            totSaTime[i] = new double[prbConfNum];
-            totSaVal[i] = new double[prbConfNum];
-            totSaMatch[i] = new double[prbConfNum];
-            totSaDiff[i] = new double[prbConfNum];
-
-            for(int j = 0; j < prbConfNum; j++)
-            {
-                totSaTime[i][j] = 0;
-                totSaVal[i][j] = 0;
-                totSaMatch[i][j] = 0;
-                totSaDiff[i][j] = 0;
-            }
+            totSaTime[i].assign(prbConfNum, 0);
+            totSaVal[i].assign(prbConfNum, 0);
+            totSaMatch[i].assign(prbConfNum, 0);
+            totSaDiff[i].assign(prbConfNum, 0);
         }
 
-        for(int i = 0; i < threadCount - 1; i++)
-        {
-            prbNums[i] = threadStep;
-            prbInds[i] = new int[threadStep];
-            esTime[i] = new double[threadStep];
-            esVal[i] = new double[threadStep];
-            mipTime[i] = new double[threadStep];
-            mipVal[i] = new double[threadStep];
-            dpeTime[i] = new double[threadStep];
-            dpeVal[i] = new double[threadStep];
-            dpaTime[i] = new double[threadStep];
-            dpaVal[i] = new double[threadStep];            
-            saTime[i] = new double*[saNum];
-            saVal[i] = new double*[saNum];
-
-            for(int j = 0; j < saNum; j++)
-            {
-                saTime[i][j] = new double[threadStep];
-                saVal[i][j] = new double[threadStep];
-            }
-        }
-
-        prbNums[threadCount - 1] = totPrbNum - (threadCount - 1) * threadStep;
-        prbInds[threadCount - 1] = new int[prbNums[threadCount - 1]];
-        esTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        esVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        mipTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        mipVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpeTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpeVal[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpaTime[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        dpaVal[threadCount - 1] = new double[prbNums[threadCount - 1]];            
-        saTime[threadCount - 1] = new double*[saNum];
-        saVal[threadCount - 1] = new double*[saNum];
-
-        for(int j = 0; j < saNum; j++)
-        {
-            saTime[threadCount - 1][j] = new double[prbNums[threadCount - 1]];
-            saVal[threadCount - 1][j] = new double[prbNums[threadCount - 1]];
-        }
-
-        int threadInd = 0;
-        int count = 0;
         int c = 0;
-        thProblems[0] = new Problem*[prbNums[0]];
         
         for(int i = 0; i < nNum; i++)
         {
@@ -579,21 +455,15 @@ namespace TxnSP
                 {
                     for(int l = 0; l < uniformNum; l++)
                     {
-                        problems[c] = new Problem*[prbNum];
-
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], ProbabilityDistribution::Uniform, inp.uniformParameters[l].first, inp.uniformParameters[l].second, inp.conflictParities[k]);
-                            thProblems[threadInd][count] = problems[c][m];
-                            prbInds[threadInd][count] = c;
-                            count++;
-
-                            if(count == threadStep && threadInd != threadCount - 1)
-                            {
-                                count = 0;
-                                threadInd++;
-                                thProblems[threadInd] = new Problem*[prbNums[threadInd]];
-                            } 
+                            std::unique_ptr<Problem> prb = std::make_unique<Problem>(inp.jobNumbers[i],
+                                inp.machineNumbers[j], ProbabilityDistribution::Uniform,
+                                inp.uniformParameters[l].first, inp.uniformParameters[l].second,
+                                inp.conflictParities[k]);
+                            problemQueue_.push(prb.get());
+                            problems.push_back(move(prb));                            
+                            indexQueue_.push(c);
                         }
 
                         c++;
@@ -601,21 +471,15 @@ namespace TxnSP
 
                     for(int l = 0; l < normalNum; l++)
                     {
-                        problems[c] = new Problem*[prbNum];
-
                         for(int m = 0; m < prbNum; m++)
                         {
-                            problems[c][m] = new Problem(inp.jobNumbers[i], inp.machineNumbers[j], ProbabilityDistribution::Normal , inp.normalParameters[l].first, inp.normalParameters[l].second, inp.conflictParities[k]);
-                            thProblems[threadInd][count] = problems[c][m];
-                            prbInds[threadInd][count] = c;
-                            count++;
-
-                            if(count == threadStep && threadInd != threadCount - 1)
-                            {
-                                count = 0;
-                                threadInd++;
-                                thProblems[threadInd] = new Problem*[prbNums[threadInd]];
-                            }
+                            std::unique_ptr<Problem> prb = std::make_unique<Problem>(inp.jobNumbers[i],
+                                inp.machineNumbers[j], ProbabilityDistribution::Normal ,
+                                inp.normalParameters[l].first, inp.normalParameters[l].second,
+                                inp.conflictParities[k]);
+                            problemQueue_.push(prb.get());
+                            problems.push_back(move(prb));                            
+                            indexQueue_.push(c);
                         }
 
                         c++;
@@ -626,28 +490,49 @@ namespace TxnSP
 
         for(int i = 0; i < threadCount; i++)
         {
-            threads[i] = thread(ThreadFunction, thProblems[i], prbNums[i], inp.es, inp.mip, inp.dp_exact, inp.dp_approximate,
-            inp.SA_DecrementTypesAndParameters, inp.SA_MaxTemperatures, dpeTime[i], dpeVal[i], dpaTime[i], dpaVal[i], 
-            esTime[i], esVal[i], mipTime[i], mipVal[i], saTime[i], saVal[i]);
+            saTime[i].reserve(saNum);
+            saVal[i].reserve(saNum);
+
+            threads.emplace_back(std::jthread([this, es = inp.es, mip = inp.mip, dp_exact = inp.dp_exact,
+                dp_approximate = inp.dp_approximate, &saDecParam = inp.SA_DecrementTypesAndParameters,
+                &saMaxTemp = inp.SA_MaxTemperatures, &ind = indices[i], &dpet = dpeTime[i], &dpev = dpeVal[i],
+                &dpat = dpaTime[i], &dpav = dpaVal[i], &est = esTime[i], &esv = esVal[i], &mipt = mipTime[i],
+                &mipv = mipVal[i], &sat = saTime[i], &sav = saVal[i]]()
+            {
+                threadFunction(es, mip, dp_exact, dp_approximate, saDecParam, saMaxTemp, ind, dpet, dpev,
+                    dpat, dpav, est, esv, mipt, mipv, sat, sav);
+            }));
         }
 
-        for(int i = 0; i < threadCount; i++)
-        {
-            threads[i].join();
-        }        
+        threads.clear();     
 
         for(int i = 0; i < threadCount; i++)
         {
-            for(int j = 0; j < prbNums[i]; j++)
+            for(int j = 0; j < indices[i].size(); j++)
             {
-                totDpeTime[prbInds[i][j]] += dpeTime[i][j];
-                totDpeVal[prbInds[i][j]] += dpeVal[i][j];
-                totDpaTime[prbInds[i][j]] += dpaTime[i][j];
-                totDpaVal[prbInds[i][j]] += dpaVal[i][j];
-                totEsTime[prbInds[i][j]] += esTime[i][j];
-                totEsVal[prbInds[i][j]] += esVal[i][j];
-                totMipTime[prbInds[i][j]] += mipTime[i][j];
-                totMipVal[prbInds[i][j]] += mipVal[i][j];
+                if(inp.dp_exact)
+                {
+                    totDpeTime[indices[i][j]] += dpeTime[i][j];
+                    totDpeVal[indices[i][j]] += dpeVal[i][j];
+                }
+                
+                if(inp.dp_approximate)
+                {
+                    totDpaTime[indices[i][j]] += dpaTime[i][j];
+                    totDpaVal[indices[i][j]] += dpaVal[i][j];
+                }
+                
+                if(inp.es)
+                {
+                    totEsTime[indices[i][j]] += esTime[i][j];
+                    totEsVal[indices[i][j]] += esVal[i][j];
+                }
+                
+                if(inp.mip)
+                {
+                    totMipTime[indices[i][j]] += mipTime[i][j];
+                    totMipVal[indices[i][j]] += mipVal[i][j];
+                }
 
                 double bl;
 
@@ -668,15 +553,26 @@ namespace TxnSP
                 #endif
                 }
 
-                totDpeMatch[prbInds[i][j]] += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
-                totDpaMatch[prbInds[i][j]] += ((dpaVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
-                totMipMatch[prbInds[i][j]] += ((mipVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                if(inp.dp_exact)
+                {
+                    totDpeMatch[indices[i][j]] += ((dpeVal[i][j] - bl) < 0.000001 && (dpeVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
 
+                if(inp.dp_approximate)
+                {
+                    totDpaMatch[indices[i][j]] += ((dpaVal[i][j] - bl) < 0.000001 && (dpaVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
+                
+                if(inp.mip)
+                {
+                    totMipMatch[indices[i][j]] += ((mipVal[i][j] - bl) < 0.000001 && (mipVal[i][j] - bl) > -0.000001) ? 1 : 0;
+                }
+                
                 for(int k = 0; k < saNum; k++)
                 {
-                    totSaTime[k][prbInds[i][j]] += saTime[i][k][j];
-                    totSaVal[k][prbInds[i][j]] += saVal[i][k][j];
-                    totSaMatch[k][prbInds[i][j]] += ((saVal[i][k][j] - bl) < 0.000001 && (saVal[i][k][j] - bl) > -0.000001) ? 1 : 0;
+                    totSaTime[k][indices[i][j]] += saTime[i][k][j];
+                    totSaVal[k][indices[i][j]] += saVal[i][k][j];
+                    totSaMatch[k][indices[i][j]] += ((saVal[i][k][j] - bl) < 0.000001 && (saVal[i][k][j] - bl) > -0.000001) ? 1 : 0;
                 }
             }
         }
@@ -725,17 +621,10 @@ namespace TxnSP
                 totSaMatch[j][i] /= prbNum;
                 totSaDiff[j][i] = (totSaVal[j][i] - bl) / bl;
             }
-
-            for(int j = 0; j < prbNum; j++)
-            {
-                delete problems[i][j];
-            }
-
-            delete[] problems[i];
         }
 
         c = 0;
-        stringstream sstream;
+        std::stringstream sstream;
         sstream.setf(std::ios::fixed);
         sstream.precision(2);
         sstream << "ES,DPE,DPA,MIP,";
@@ -748,10 +637,17 @@ namespace TxnSP
             }
         }
 
-        string firstRow = sstream.str();
+        std::string firstRow = sstream.str();
         firstRow.pop_back();
-        sstream.str(string());
+        sstream.str(std::string());
         
+        const std::filesystem::path filePath = std::filesystem::path(std::getenv("HOME")) / ".TxnSP";
+        std::filesystem::create_directory(filePath);
+        std::filesystem::create_directory(filePath / "evaluation");
+        std::filesystem::create_directory(filePath / "evaluation" / "random");
+
+        
+
         for(int i = 0; i < nNum; i++)
         {
             for(int j = 0; j < mNum; j++)
@@ -760,65 +656,73 @@ namespace TxnSP
                 {
                     for(int k = 0; k < cpNum; k++)
                     {
-                        sstream << inp.directory << "/" << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_u_" << 
+                        sstream << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_u_" << 
                         inp.uniformParameters[l].first << "_" << inp.uniformParameters[l].second << "_" << inp.conflictParities[k] << "_" 
                         << prbNum << ".csv";
 
-                        files[c].open(sstream.str(), fstream::out | fstream::trunc);
-                        sstream.str(string());
+                        try
+                        {
+                            files[c].open(filePath / "evaluation" / "random" / sstream.str(), std::fstream::out | std::fstream::trunc);
+                        }
+                        catch(const std::filesystem::filesystem_error& e)
+                        {
+                            std::cerr << "Cannot open result file: " << e.what() << '\n';
+                        }
+
+                        sstream.str(std::string());
                         files[c] << firstRow << "\n";
 
-                        sstream << to_string(totEsTime[c]) << "," << to_string(totDpeTime[c]) << "," << to_string(totDpaTime[c])
-                        << "," << to_string(totMipTime[c]) << ",";
+                        sstream << std::to_string(totEsTime[c]) << "," << std::to_string(totDpeTime[c]) << "," <<
+                            std::to_string(totDpaTime[c]) << "," << std::to_string(totMipTime[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaTime[m][c]) << ",";
+                            sstream << std::to_string(totSaTime[m][c]) << ",";
                         }
 
-                        string row = sstream.str();
+                        std::string row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
 
-                        sstream << to_string(totEsVal[c]) << "," << to_string(totDpeVal[c]) << "," << to_string(totDpaVal[c])
-                        << "," << to_string(totMipVal[c]) << ",";
+                        sstream << std::to_string(totEsVal[c]) << "," << std::to_string(totDpeVal[c]) << "," <<
+                            std::to_string(totDpaVal[c]) << "," << std::to_string(totMipVal[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaVal[m][c]) << ",";
-                        }
-
-                        row = sstream.str();
-                        row.pop_back();
-                        files[c] << row << "\n";
-                        sstream.str(string());
-
-                        sstream << "1," << to_string(totDpeMatch[c]) << "," << to_string(totDpaMatch[c]) << "," <<
-                        to_string(totMipMatch[c]) << ",";
-
-                        for(int m = 0; m < saNum; m++)
-                        {
-                            sstream << to_string(totSaMatch[m][c]) << ",";
+                            sstream << std::to_string(totSaVal[m][c]) << ",";
                         }
 
                         row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
 
-                        sstream << "0," << to_string(totDpeDiff[c]) << "," << to_string(totDpaDiff[c]) << "," <<
-                        to_string(totMipDiff[c]) << ",";
+                        sstream << "1," << std::to_string(totDpeMatch[c]) << "," << std::to_string(totDpaMatch[c])
+                            << "," << std::to_string(totMipMatch[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaDiff[m][c]) << ",";
+                            sstream << std::to_string(totSaMatch[m][c]) << ",";
                         }
 
                         row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
+
+                        sstream << "0," << std::to_string(totDpeDiff[c]) << "," << std::to_string(totDpaDiff[c])
+                            << "," << std::to_string(totMipDiff[c]) << ",";
+
+                        for(int m = 0; m < saNum; m++)
+                        {
+                            sstream << std::to_string(totSaDiff[m][c]) << ",";
+                        }
+
+                        row = sstream.str();
+                        row.pop_back();
+                        files[c] << row << "\n";
+                        sstream.str(std::string());
                         
                         files[c].flush();
                         files[c].close();
@@ -831,65 +735,73 @@ namespace TxnSP
                 {
                     for(int k = 0; k < cpNum; k++)
                     {
-                        sstream << "../data/Evaluator/" << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_n_" << 
+                        sstream << inp.jobNumbers[i] << "_" << inp.machineNumbers[j] << "_n_" << 
                         inp.normalParameters[l].first << "_" << inp.normalParameters[l].second << "_" << inp.conflictParities[k] << "_" 
                         << prbNum << ".csv";
 
-                        files[c].open(sstream.str(), fstream::out | fstream::trunc);
-                        sstream.str(string());
+                        try
+                        {
+                            files[c].open(filePath / "evaluation" / "random" / sstream.str(), std::fstream::out | std::fstream::trunc);
+                        }
+                        catch(const std::filesystem::filesystem_error& e)
+                        {
+                            std::cerr << "Cannot open result file: " << e.what() << '\n';
+                        }
+                        
+                        sstream.str(std::string());
                         files[c] << firstRow << "\n";
 
-                        sstream << to_string(totEsTime[c]) << "," << to_string(totDpeTime[c]) << "," << to_string(totDpaTime[c])
-                        << "," << to_string(totMipTime[c]) << ",";
+                        sstream << std::to_string(totEsTime[c]) << "," << std::to_string(totDpeTime[c]) << "," <<
+                            std::to_string(totDpaTime[c]) << "," << std::to_string(totMipTime[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaTime[m][c]) << ",";
+                            sstream << std::to_string(totSaTime[m][c]) << ",";
                         }
 
-                        string row = sstream.str();
+                        std::string row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
 
-                        sstream << to_string(totEsVal[c]) << "," << to_string(totDpeVal[c]) << "," << to_string(totDpaVal[c])
-                        << "," << to_string(totMipVal[c]) << ",";
+                        sstream << std::to_string(totEsVal[c]) << "," << std::to_string(totDpeVal[c]) << "," <<
+                            std::to_string(totDpaVal[c]) << "," << std::to_string(totMipVal[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaVal[m][c]) << ",";
-                        }
-
-                        row = sstream.str();
-                        row.pop_back();
-                        files[c] << row << "\n";
-                        sstream.str(string());
-
-                        sstream << "1," << to_string(totDpeMatch[c]) << "," << to_string(totDpaMatch[c]) << "," <<
-                        to_string(totMipMatch[c]) << ",";
-
-                        for(int m = 0; m < saNum; m++)
-                        {
-                            sstream << to_string(totSaMatch[m][c]) << ",";
+                            sstream << std::to_string(totSaVal[m][c]) << ",";
                         }
 
                         row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
 
-                        sstream << "0," << to_string(totDpeDiff[c]) << "," << to_string(totDpaDiff[c]) << "," <<
-                        to_string(totMipDiff[c]) << ",";
+                        sstream << "1," << std::to_string(totDpeMatch[c]) << "," << std::to_string(totDpaMatch[c])
+                            << "," <<   std::to_string(totMipMatch[c]) << ",";
 
                         for(int m = 0; m < saNum; m++)
                         {
-                            sstream << to_string(totSaDiff[m][c]) << ",";
+                            sstream << std::to_string(totSaMatch[m][c]) << ",";
                         }
 
                         row = sstream.str();
                         row.pop_back();
                         files[c] << row << "\n";
-                        sstream.str(string());
+                        sstream.str(std::string());
+
+                        sstream << "0," << std::to_string(totDpeDiff[c]) << "," << std::to_string(totDpaDiff[c])
+                            << "," <<   std::to_string(totMipDiff[c]) << ",";
+
+                        for(int m = 0; m < saNum; m++)
+                        {
+                            sstream << std::to_string(totSaDiff[m][c]) << ",";
+                        }
+
+                        row = sstream.str();
+                        row.pop_back();
+                        files[c] << row << "\n";
+                        sstream.str(std::string());
 
                         files[c].flush();
                         files[c].close();
@@ -898,74 +810,7 @@ namespace TxnSP
                     }
                 }                
             }
-        }     
-               
-
-        for(int i = 0; i < threadCount; i++)
-        {
-            delete[] thProblems[i];
-            delete[] prbInds[i];
-            delete[] dpeTime[i];
-            delete[] dpeVal[i];
-            delete[] dpaTime[i];
-            delete[] dpaVal[i];
-            delete[] esTime[i];
-            delete[] esVal[i];
-            delete[] mipTime[i];
-            delete[] mipVal[i];
-
-            for(int j = 0; j < saNum; j++)
-            {
-                delete[] saTime[i][j];
-                delete[] saVal[i][j];
-            }
-
-            delete[] saTime[i];
-            delete[] saVal[i];
         }
-
-        for(int i = 0; i < saNum; i++)
-        {
-            delete[] totSaTime[i];
-            delete[] totSaVal[i];
-            delete[] totSaMatch[i];
-            delete[] totSaDiff[i];          
-        }
-
-        delete[] problems;
-        delete[] thProblems;
-        delete[] threads;
-        delete[] prbNums;
-        delete[] prbInds;
-        delete[] dpeTime;
-        delete[] dpeVal;
-        delete[] dpaTime;
-        delete[] dpaVal;
-        delete[] esTime;
-        delete[] esVal;
-        delete[] mipTime;
-        delete[] mipVal;
-        delete[] saTime;
-        delete[] saVal;
-        delete[] files;
-        delete[] totDpeTime;
-        delete[] totDpeVal;
-        delete[] totDpeMatch;
-        delete[] totDpeDiff;
-        delete[] totDpaTime;
-        delete[] totDpaVal;
-        delete[] totDpaMatch;
-        delete[] totDpaDiff;
-        delete[] totEsTime;
-        delete[] totEsVal;
-        delete[] totMipTime;
-        delete[] totMipVal;
-        delete[] totMipMatch;
-        delete[] totMipDiff;
-        delete[] totSaTime;
-        delete[] totSaVal;
-        delete[] totSaMatch;
-        delete[] totSaDiff;
     }
 
     void Evaluator::evaluate(const EvaluatorInput& inp)

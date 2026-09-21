@@ -2,217 +2,10 @@
 
 namespace TxnSP
 {
-	Schedule::Schedule(Schedule* sch) : size_(sch->size_), jobNumber_(sch->jobNumber_), machineNumber_(sch->machineNumber_),
-	makespan_(sch->makespan_), minimumTime_(sch->minimumTime_), minimumMachine_(sch->minimumMachine_), del_(false)
+	void Schedule::initialize(Problem* prb, const std::vector<int>& state)
 	{
-		jobs_ = new int* [machineNumber_];
-		jobNumbers_ = new int[machineNumber_];
-		processingTimes_ = new double[machineNumber_];
-		lastJobs_ = new int[machineNumber_];
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			jobs_[i] = new int[jobNumber_];
-			jobNumbers_[i] = sch->jobNumbers_[i];
-			processingTimes_[i] = sch->processingTimes_[i];
-			lastJobs_[i] = sch->lastJobs_[i];
-
-			for (int j = 0; j < jobNumber_; j++)
-			{
-				jobs_[i][j] = sch->jobs_[i][j];
-			}
-		}
-	}
-
-	Schedule::Schedule(Problem* prb, int job) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
-	size_(1), makespan_(prb->getLength(job)), minimumMachine_(1), minimumTime_(0), del_(false)
-	{
-		jobs_ = new int*[machineNumber_];
-		processingTimes_ = new double[machineNumber_];
-		lastJobs_ = new int[machineNumber_];
-		jobNumbers_ = new int[machineNumber_];
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			jobs_[i] = new int[jobNumber_];
-			processingTimes_[i] = 0;
-			jobNumbers_[i] = 0;
-
-			for (int j = 0; j < jobNumber_; j++)
-			{
-				jobs_[i][j] = -1;
-			}
-		}
-
-		lastJobs_[0] = job;
-		jobs_[0][0] = job;
-		processingTimes_[0] = makespan_;
-		jobNumbers_[0] = 1;
-	}
-
-	Schedule::Schedule(Problem* prb, Schedule* sch, int job) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
-	size_(sch->size_), minimumMachine_(sch->minimumMachine_), makespan_(sch->makespan_), minimumTime_(sch->minimumTime_),
-	del_(false)
-	{
-		jobs_ = new int*[machineNumber_];
-		jobNumbers_ = new int[machineNumber_];
-		processingTimes_ = new double[machineNumber_];
-		lastJobs_ = new int[machineNumber_];
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			jobs_[i] = new int[jobNumber_];
-			jobNumbers_[i] = sch->jobNumbers_[i];
-			processingTimes_[i] = sch->processingTimes_[i];
-			lastJobs_[i] = sch->lastJobs_[i];
-
-			for (int j = 0; j < jobNumber_; j++)
-			{
-				jobs_[i][j] = sch->jobs_[i][j];
-			}
-		}
-
-		double temp = minimumTime_;
-		int coun = (size_ < machineNumber_) ? size_ : machineNumber_;
-		bool** conf = prb->getConflicts();
-
-		for (int i = 0; i < coun; i++)
-		{
-			if (conf[job][lastJobs_[i]])
-			{
-				if (temp < processingTimes_[i])
-				{
-					temp = processingTimes_[i];
-				}
-			}
-		}
-
-		size_++;
-		lastJobs_[minimumMachine_] = job;
-		jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = job;
-		jobNumbers_[minimumMachine_]++;
-		processingTimes_[minimumMachine_] = temp + prb->getLength(job);
-		minimumTime_ = 1.7976931e+308;
-
-		if (processingTimes_[minimumMachine_] > makespan_)
-		{
-			makespan_ = processingTimes_[minimumMachine_];
-		}
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			if (processingTimes_[i] < minimumTime_)
-			{
-				minimumTime_ = processingTimes_[i];
-				minimumMachine_ = i;
-			}
-		}
-	}
-
-    Schedule::Schedule(Problem* prb, __uint128_t index, int* perm, int* a) : jobNumber_(prb->getJobNumber()),
-	machineNumber_(prb->getMachineNumber()), size_(prb->getJobNumber()), minimumMachine_(0), del_(false)
-    {
-        decode(index, perm, a, jobNumber_, prb->getDivid());
-		jobs_ = new int*[machineNumber_]; 
-		processingTimes_ = new double[machineNumber_];
-		lastJobs_ = new int[machineNumber_]; 
-		jobNumbers_ = new int[machineNumber_]; 
-        makespan_ = 0;
-		minimumTime_ = 1.7976931e+308;
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			jobs_[i] = new int[jobNumber_];
-			jobNumbers_[i] = 0;
-			processingTimes_[i] = 0;
-
-			for (int j = 0; j < jobNumber_; j++) 
-			{
-				jobs_[i][j] = -1;
-			}
-		}
-
-        bool** conf = prb->getConflicts();
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			double temp = 0;
-
-			jobs_[i][0] = perm[i];
-			lastJobs_[i] = perm[i];
-			jobNumbers_[i]++;            		
-
-			for (int j = 0; j <= i; j++)
-			{
-				if (conf[perm[i]][lastJobs_[j]])
-				{
-					if (processingTimes_[j] > temp)
-					{
-						temp = processingTimes_[j];
-					}
-				}
-			}
-
-			processingTimes_[i] = temp + prb->getLength(perm[i]);
-
-			if (processingTimes_[i] < minimumTime_)
-			{
-				minimumTime_ = processingTimes_[i];
-				minimumMachine_ = i;
-			}
-		}
-
-		for (int i = machineNumber_; i < jobNumber_; i++)
-		{
-			double temp = processingTimes_[minimumMachine_];
-
-			jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = perm[i];
-			lastJobs_[minimumMachine_] = perm[i];			
-			jobNumbers_[minimumMachine_]++;
-
-			for (int j = 0; j < machineNumber_; j++)
-			{
-				if (conf[perm[i]][lastJobs_[j]])
-				{
-					if (processingTimes_[j] > temp)
-					{
-						temp = processingTimes_[j];
-					}
-				}
-			}
-
-			processingTimes_[minimumMachine_] = temp + prb->getLength(perm[i]);
-			minimumTime_ = 1.7976931e+308;
-
-			for (int j = 0; j < machineNumber_; j++)
-			{
-				if (processingTimes_[j] < minimumTime_)
-				{
-					minimumTime_ = processingTimes_[j];
-					minimumMachine_ = j;
-				}
-			}
-		}		
-
-		for (int i = 0; i < jobNumber_; i++)
-		{
-			if (processingTimes_[i] > makespan_)
-			{
-				makespan_ = processingTimes_[i];
-			}
-		}
-    }
-
-	Schedule::Schedule(Problem* prb, int* state) : jobNumber_(prb->getJobNumber()), machineNumber_(prb->getMachineNumber()),
-	size_(prb->getJobNumber()), minimumMachine_(0), del_(true)
-	{		
-		jobs_ = new int*[machineNumber_];
-		processingTimes_ = new double[machineNumber_];
-		lastJobs_ = new int[machineNumber_];
-		jobNumbers_ = new int[machineNumber_];
-		order_ = new int[machineNumber_];
-		bool** conf = prb->getConflicts();
-		double* T = prb->getLengths();
+		auto conf = prb->getConflicts();
+		auto T = prb->getLengths();
 		int job;
 		double temp;
 		
@@ -220,15 +13,12 @@ namespace TxnSP
 		{
 			temp = 0;
 			job = state[i];
-			
-			jobs_[i] = new int[jobNumber_];
-			jobs_[i][0] = job;
+			jobs_[i].push_back(job);
 			lastJobs_[i] = job;
-			jobNumbers_[i] = 1;
 			
 			for (int j = i - 1; j > -1; j--)
 			{
-				if (conf[job][lastJobs_[order_[j]]])
+				if (conf[job][lastJobs_[order_[j]]] == 1)
 				{
 					temp = processingTimes_[order_[j]];
 					break;
@@ -246,13 +36,12 @@ namespace TxnSP
 			temp = processingTimes_[order_[0]];
 			job = state[i];
 
-			jobs_[order_[0]][jobNumbers_[order_[0]]] = job;
+			jobs_[order_[0]].push_back(job);
 			lastJobs_[order_[0]] = job;
-			jobNumbers_[order_[0]]++;
 			
 			for (int j = machineNumber_ - 1; j > 0; j--)
 			{
-				if (conf[job][lastJobs_[order_[j]]])
+				if (conf[job][lastJobs_[order_[j]]] == 1)
 				{
 					temp = processingTimes_[order_[j]];
 					break;
@@ -270,24 +59,122 @@ namespace TxnSP
 		makespan_ = processingTimes_[order_[machineNumber_ - 1]];
 	}
 
+	Schedule::Schedule(Schedule* sch)
+		: size_(sch->size_),
+		  jobNumber_(sch->jobNumber_),
+	  	  machineNumber_(sch->machineNumber_),
+		  makespan_(sch->makespan_),
+		  minimumTime_(sch->minimumTime_),
+		  minimumMachine_(sch->minimumMachine_),
+		  processingTimes_(sch->processingTimes_),
+		  jobs_(sch->jobs_),
+		  lastJobs_(sch->lastJobs_),
+		  order_(sch->order_) {	}
+
+	Schedule::Schedule(Problem* prb, int job)
+		: jobNumber_(prb->getJobNumber()),
+		  machineNumber_(prb->getMachineNumber()),
+		  size_(1),
+		  makespan_(prb->getLength(job)),
+		  minimumMachine_(1),
+		  minimumTime_(0),
+		  processingTimes_(prb->getMachineNumber()),
+		  jobs_(prb->getMachineNumber()),
+		  lastJobs_(prb->getMachineNumber())
+	{
+		for (int i = 0; i < machineNumber_; i++)
+		{
+			processingTimes_[i] = 0;
+		}
+
+		lastJobs_[0] = job;
+		jobs_[0].push_back(job);
+		processingTimes_[0] = makespan_;
+	}
+
+	Schedule::Schedule(Problem* prb, Schedule* sch, int job)
+		: jobNumber_(prb->getJobNumber()),
+		  machineNumber_(prb->getMachineNumber()),
+		  size_(sch->size_),
+		  minimumMachine_(sch->minimumMachine_),
+		  makespan_(sch->makespan_),
+		  minimumTime_(sch->minimumTime_),
+		  processingTimes_(sch->processingTimes_),
+		  jobs_(sch->jobs_),
+		  lastJobs_(sch->lastJobs_)
+	{
+		double temp = minimumTime_;
+		int coun = (size_ < machineNumber_) ? size_ : machineNumber_;
+		auto conf = prb->getConflicts();
+
+		for (int i = 0; i < coun; i++)
+		{
+			if (conf[job][lastJobs_[i]] == 1)
+			{
+				if (temp < processingTimes_[i])
+				{
+					temp = processingTimes_[i];
+				}
+			}
+		}
+
+		size_++;
+		lastJobs_[minimumMachine_] = job;
+		jobs_[minimumMachine_].push_back(job);
+		processingTimes_[minimumMachine_] = temp + prb->getLength(job);
+		minimumTime_ = DBL_MAX;
+
+		if (processingTimes_[minimumMachine_] > makespan_)
+		{
+			makespan_ = processingTimes_[minimumMachine_];
+		}
+
+		for (int i = 0; i < machineNumber_; i++)
+		{
+			if (processingTimes_[i] < minimumTime_)
+			{
+				minimumTime_ = processingTimes_[i];
+				minimumMachine_ = i;
+			}
+		}
+	}
+
+    Schedule::Schedule(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a)
+		: jobNumber_(prb->getJobNumber()),
+		  machineNumber_(prb->getMachineNumber()),
+		  size_(prb->getJobNumber()),
+		  minimumMachine_(0),
+		  processingTimes_(prb->getMachineNumber()),
+		  jobs_(prb->getMachineNumber()),
+		  lastJobs_(prb->getMachineNumber()),
+		  order_(prb->getMachineNumber())
+    {
+        decode(index, perm, a, jobNumber_, prb->getDivid());
+        initialize(prb, perm);
+    }
+
+	Schedule::Schedule(Problem* prb, const std::vector<int>&  state)
+		: jobNumber_(prb->getJobNumber()),
+		  machineNumber_(prb->getMachineNumber()),
+		  size_(prb->getJobNumber()),
+		  minimumMachine_(0),
+		  processingTimes_(prb->getMachineNumber()),
+		  jobs_(prb->getMachineNumber()),
+		  lastJobs_(prb->getMachineNumber()),
+		  order_(prb->getMachineNumber())
+	{
+		initialize(prb, state);
+	}
+
 	void Schedule::change(Schedule* sch)
 	{	
 		size_ = sch->size_;
 		makespan_ = sch->makespan_;
 		minimumTime_ = sch->minimumTime_;
 		minimumMachine_ = sch->minimumMachine_;
-			
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			jobNumbers_[i] = sch->jobNumbers_[i];
-			processingTimes_[i] = sch->processingTimes_[i];
-			lastJobs_[i] = sch->lastJobs_[i];
-			
-			for (int j = 0; j < jobNumber_; j++)
-			{
-				jobs_[i][j] = sch->jobs_[i][j];
-			}
-		}
+		processingTimes_ = sch->processingTimes_;
+		jobs_ = sch->jobs_;
+		lastJobs_ = sch->lastJobs_;
 	}
 
 	void Schedule::change(Problem* prb, int job)
@@ -300,18 +187,12 @@ namespace TxnSP
 		for (int i = 0; i < machineNumber_; i++)
 		{
 			processingTimes_[i] = 0;
-			jobNumbers_[i] = 0;
-
-			for (int j = 0; j < jobNumber_; j++)
-			{
-				jobs_[i][j] = -1;
-			}
+			jobs_[i].clear();
 		}
 
 		lastJobs_[0] = job;
-		jobs_[0][0] = job;
-		processingTimes_[0] = makespan_;		
-		jobNumbers_[0] = 1;
+		jobs_[0].push_back(job);
+		processingTimes_[0] = makespan_;
 	}
 
 	void Schedule::change(Problem* prb, Schedule* sch, int job)
@@ -321,11 +202,11 @@ namespace TxnSP
 		int ind = minimumMachine_;
 		double temp = minimumTime_;
 		int coun = (size_ < machineNumber_) ? size_ : machineNumber_;
-		bool** conf = prb->getConflicts();
+		auto conf = prb->getConflicts();
 
 		for(int i = 0; i < coun; i++)
 		{
-			if(conf[job][lastJobs_[i]])
+			if(conf[job][lastJobs_[i]] == 1)
 			{
 				if (temp < processingTimes_[i])
 				{
@@ -336,10 +217,9 @@ namespace TxnSP
 
 		size_++;
 		lastJobs_[ind] = job;
-		jobs_[ind][jobNumbers_[ind]] = job;
-		jobNumbers_[ind]++;
+		jobs_[ind].push_back(job);
 		processingTimes_[ind] = temp + prb->getLength(job);
-		minimumTime_ = 1.7976931e+308;
+		minimumTime_ = DBL_MAX;
 
 		if (processingTimes_[ind] > makespan_)
 		{
@@ -356,158 +236,34 @@ namespace TxnSP
 		}	
 	}
 
-	void Schedule::change(Problem* prb, __uint128_t index, int* perm, int* a)
+	void Schedule::change(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a)
 	{
 		size_ = prb->getJobNumber();
 		minimumMachine_ = 0;
 		decode(index, perm, a, jobNumber_, prb->getDivid());
-		minimumTime_ = 1.7976931e+308;
+		minimumTime_ = DBL_MAX;
 
 		for (int i = 0; i < machineNumber_; i++)
 		{
-			jobNumbers_[i] = 0;
 			processingTimes_[i] = 0;
-
-			for (int j = 0; j < jobNumber_; j++) 
-			{
-				jobs_[i][j] = -1;
-			}
+			jobs_[i].clear();
 		}
 
-		bool** conf = prb->getConflicts();
-		double* t = prb->getLengths();
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			double temp = 0;
-
-			jobs_[i][0] = perm[i];
-			lastJobs_[i] = perm[i];
-			jobNumbers_[i]++;
-
-			for (int j = 0; j <= i; j++)
-			{
-				if (conf[perm[i]][lastJobs_[j]])
-				{
-					if (processingTimes_[j] > temp)
-					{
-						temp = processingTimes_[j];
-					}
-				}
-			}
-
-			processingTimes_[i] = temp + t[perm[i]];
-
-			if (processingTimes_[i] < minimumTime_)
-			{
-				minimumTime_ = processingTimes_[i];
-				minimumMachine_ = i;
-			}
-		}
-
-		for (int i = machineNumber_; i < jobNumber_; i++)
-		{
-			double temp = processingTimes_[minimumMachine_];
-
-			jobs_[minimumMachine_][jobNumbers_[minimumMachine_]] = perm[i];
-			lastJobs_[minimumMachine_] = perm[i];
-			jobNumbers_[minimumMachine_]++;
-
-			for (int j = 0; j < machineNumber_; j++)
-			{
-				if (conf[perm[i]][lastJobs_[j]])
-				{
-					if (processingTimes_[j] > temp)
-					{
-						temp = processingTimes_[j];
-					}
-				}
-			}
-
-			processingTimes_[minimumMachine_] = temp + t[perm[i]];
-			minimumTime_ = 1.7976931e+308;
-
-			for (int j = 0; j < machineNumber_; j++)
-			{
-				if (processingTimes_[j] < minimumTime_)
-				{
-					minimumTime_ = processingTimes_[j];
-					minimumMachine_ = j;
-				}
-			}
-		}
-
-		makespan_ = 0;
-
-		for (int i = 0; i < machineNumber_; i++)
-		{
-			if (processingTimes_[i] > makespan_)
-			{
-				makespan_ = processingTimes_[i];
-			}
-		}
+		initialize(prb, perm);
 	}
 
-	void Schedule::change(Problem* prb, int* state)
-	{		
-		bool** conf = prb->getConflicts();
-		double* T = prb->getLengths();
-		double temp;
-		int job;
+	void Schedule::change(Problem* prb, const std::vector<int>& state)
+	{
+		size_ = prb->getJobNumber();
+		minimumMachine_ = 0;
 
 		for (int i = 0; i < machineNumber_; i++)
 		{
-			temp = 0;
-			job = state[i];
-
-			jobs_[i][0] = job;
-			lastJobs_[i] = job;
-			jobNumbers_[i] = 1;
-			
-			for (int j = i - 1; j > -1; j--)
-			{
-				if (conf[job][lastJobs_[order_[j]]])
-				{
-					temp = processingTimes_[order_[j]];
-					break;
-				}
-			}
-
-			processingTimes_[i] = temp + T[job];
-			int ind = findPlace2(processingTimes_, order_, processingTimes_[i], i);
-			shift(order_, ind, i);
-			order_[ind] = i;	
-			
+			processingTimes_[i] = 0;
+			jobs_[i].clear();
 		}
 
-		for (int i = machineNumber_; i < jobNumber_; i++)
-		{			
-			temp = processingTimes_[order_[0]];
-			job = state[i];
-
-			jobs_[order_[0]][jobNumbers_[order_[0]]] = job;
-			lastJobs_[order_[0]] = job;
-			jobNumbers_[order_[0]]++;
-
-			for (int j = machineNumber_ - 1; j > 0; j--)
-			{
-				if (conf[job][lastJobs_[order_[j]]])
-				{
-					temp = processingTimes_[order_[j]];
-					break;
-				}
-			}
-
-			processingTimes_[order_[0]] = temp + T[job];
-			int tempi = order_[0];
-			int ind = findPlace(processingTimes_, order_, processingTimes_[order_[0]], machineNumber_);			
-			shift(order_, ind);
-			order_[ind] = tempi;
-			
-		}
-
-		makespan_ = processingTimes_[order_[machineNumber_ - 1]];
-		minimumTime_ = processingTimes_[order_[0]];
+		initialize(prb, state);
 	}
 
     int Schedule::getJobNumber() const
@@ -540,24 +296,19 @@ namespace TxnSP
         return minimumMachine_;
     }
 
-	int** Schedule::getJobs() const
+	const std::vector<std::vector<int>>& Schedule::getJobs() const
     {
         return jobs_;
     }    
 
-	double* Schedule::getProcessingTimes() const
+	const std::vector<double>& Schedule::getProcessingTimes() const
     {
         return processingTimes_;
     }
 
-	int* Schedule::getLastJobs() const
+	const std::vector<int>& Schedule::getLastJobs() const
     {
         return lastJobs_;
-    }
-
-	int* Schedule::getJobNumbers() const
-    {
-        return jobNumbers_;
     }
 
 	bool Schedule::isEquivalent(Schedule* sch)
@@ -586,22 +337,4 @@ namespace TxnSP
 
 		return true;
 	}
-
-    Schedule::~Schedule()
-    {
-        for (int i = 0; i < machineNumber_; i++)
-		{
-			delete[] jobs_[i];
-		}
-
-		delete[] jobs_;
-		delete[] jobNumbers_;
-		delete[] processingTimes_;
-		delete[] lastJobs_;
-
-		if(del_)
-		{
-			delete[] order_;
-		}
-    }
 }

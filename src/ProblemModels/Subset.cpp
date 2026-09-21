@@ -6,7 +6,7 @@ namespace TxnSP
 	{
         for(int i = 0; i < scheduleNumber_; i++)
         {
-            schedulePool_->returnSchedule(list_[i]);
+            schedulePool_->returnSchedule(move(list_[i]));
         }
 	}
 
@@ -17,29 +17,29 @@ namespace TxnSP
 		while (ind < scheduleNumber_)
 		{
 			int ind2 = ind + 1;
-			int move = 0;
+			int shiftCount = 0;			
 
 			while (ind2 < scheduleNumber_)
 			{
-				if (list_[ind]->isEquivalent(list_[ind2]))
+				if (list_[ind]->isEquivalent(list_[ind2].get()))
 				{
-					move++;
-					schedulePool_->returnSchedule(list_[ind2]);
+					shiftCount++;
+					schedulePool_->returnSchedule(std::move(list_[ind2]));
 				}
-				else if (move > 0)
+				else if (shiftCount > 0)
 				{
-					list_[ind2 - move] = list_[ind2];
+					list_[ind2 - shiftCount] = std::move(list_[ind2]);
 				}
 
 				ind2++;
 			}
 
 			ind++;
-			scheduleNumber_ -= move;
+			scheduleNumber_ -= shiftCount;
 		}
     }
 
-    void Subset::finalize()
+    void Subset::finalize() 	
     {
         double min = list_[0]->getMakespan();
 		int ind = 0;
@@ -48,40 +48,38 @@ namespace TxnSP
 		{
 			if (list_[i]->getMakespan() < min)
 			{
-				schedulePool_->returnSchedule(list_[ind]);
+				schedulePool_->returnSchedule(std::move(list_[ind]));
 				ind = i;
 				min = list_[i]->getMakespan();
 			}
 			else
 			{
-				schedulePool_->returnSchedule(list_[i]);
+				schedulePool_->returnSchedule(std::move(list_[i]));
 			}
 		}
 
-		Schedule* temp = list_[ind];
-		delete[] list_;
-		list_ = new Schedule*[1](temp);
+		list_[0] = move(list_[ind]);
 		scheduleNumber_ = 1;
     }
 
     void Subset::eliminate(double makespan)
     {
-        int move = 0;
+        int shiftCount = 0;
 
 		for (int i = 0; i < scheduleNumber_; i++)
 		{
-			if (list_[i]->getMinimumTime() >= makespan && move < scheduleNumber_ - 1)
+			if (list_[i]->getMinimumTime() >= makespan && shiftCount < scheduleNumber_ - 1)
 			{
-				move++;
-				schedulePool_->returnSchedule(list_[i]);
+				shiftCount++;
+				schedulePool_->returnSchedule(std::move(list_[i]));
 			}
 			else
 			{
-				list_[i - move] = list_[i];
+				list_[i - shiftCount] = std::move(list_[i]);
 			}
 		}
 
-		scheduleNumber_ -= move;
+		scheduleNumber_ -= shiftCount;
 
 		if (size_ <= list_[0]->getMachineNumber())
 		{
@@ -89,12 +87,37 @@ namespace TxnSP
 		}
     }
 
-    Subset::Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, SchedulePool* schedulePool)
-	: problemSize_(problemSize), size_(size), scheduleNumber_(scheduleNumber), list_(schedules), schedulePool_(schedulePool) { }
+    Subset::Subset(int problemSize, int size, std::span<std::unique_ptr<Schedule>> schedules,
+		SchedulePool* schedulePool)
+		: problemSize_(problemSize),
+		  size_(size),
+		  scheduleNumber_(schedules.size()),
+		  schedulePool_(schedulePool)
+	{
+		
+		for(auto& sch : schedules)
+		{
+			list_.push_back(move(sch));
+		}
 
-    Subset::Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, double makespan, SchedulePool* schedulePool)
-	: problemSize_(problemSize), size_(size), scheduleNumber_(scheduleNumber), list_(schedules), schedulePool_(schedulePool)
+		if(list_.empty())
+		{
+			int asf = 0;
+		}
+	}
+
+    Subset::Subset(int problemSize, int size, std::span<std::unique_ptr<Schedule>> schedules, double makespan,
+		SchedulePool* schedulePool)
+		: problemSize_(problemSize),
+		  size_(size),
+		  scheduleNumber_(schedules.size()),
+		  schedulePool_(schedulePool)
     {
+		for(auto& sch : schedules)
+		{
+			list_.push_back(move(sch));
+		}
+
         if (size == problemSize)
 		{
 			finalize();
@@ -105,23 +128,26 @@ namespace TxnSP
 		}
     }
 
-    void Subset::change(int size, int scheduleNumber, Schedule** sch)
-    {   
-        clearList();
-        delete[] list_;
-        list_ = sch;
-		size_ = size;
-        scheduleNumber_ = scheduleNumber;
-		list_ = sch;
+    void Subset::change(int size, std::span<std::unique_ptr<Schedule>> schedules)
+    {
+		size_ = size;	
+        scheduleNumber_ = schedules.size();
+
+		for(auto& sch : schedules)
+		{
+			list_.push_back(move(sch));
+		}
     }
 
-	void Subset::change(int size, int scheduleNumber, double makespan, Schedule** schedules)
+	void Subset::change(int size, std::span<std::unique_ptr<Schedule>> schedules, double makespan)
 	{
-		clearList();
-		delete[] list_;
-		list_ = schedules;
-		size_ = size;
-		scheduleNumber_ = scheduleNumber;
+		size_ = size;	
+		scheduleNumber_ = schedules.size();
+
+		for(auto& sch : schedules)
+		{
+			list_.push_back(move(sch));
+		}
 
 		if (size == problemSize_)
 		{
@@ -138,13 +164,18 @@ namespace TxnSP
         return scheduleNumber_;
     }
 
-    Schedule* Subset::getSchedule(int ind)
-    {
-        return list_[ind];
-    }
+	Schedule* Subset::getSchedule(int ind)
+	{
+		return list_[ind].get();
+	}
 
-    Subset::~Subset()
-    {
-        delete[] list_;
-    }
+	void Subset::clearSchedules()
+	{
+		for(int i = 0; i < scheduleNumber_; i++)
+		{
+			schedulePool_->returnSchedule(move(list_[i]));
+		}
+
+		list_.clear();
+	}
 }

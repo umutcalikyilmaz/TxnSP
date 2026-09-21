@@ -2,7 +2,7 @@
 
 namespace TxnSP
 {
-    SolverOutput* MIPSolver::solve(const SolverInput& input)
+    SolverOutput MIPSolver::solve(const SolverInput& input)
     {
 		double beg = std::chrono::steady_clock::now().time_since_epoch().count();
         Problem* prb = input.prb;
@@ -10,20 +10,18 @@ namespace TxnSP
 		if(prb->getJobNumber() <= prb->getMachineNumber())
         {
             double end = std::chrono::steady_clock::now().time_since_epoch().count();
-            SolverOutput* res = new SolverOutput(prb, (end - beg) / 1000000000);
+            return SolverOutput(prb, (end - beg) / 1000000000);
         }
 
         double M = 0;        
 		int n = prb->getJobNumber();
 		int m = prb->getMachineNumber();
-        double* T = prb->getLengths();
-        bool** conf = prb->getConflicts();
 
 		for (int i = 0; i < n; i++)
 		{
-			if (M < T[i])
+			if (M < prb->getLengths()[i])
 			{
-				M = T[i];
+				M = prb->getLengths()[i];
 			}
 		}
 
@@ -91,7 +89,7 @@ namespace TxnSP
 		for (int i = 0; i < n; i++)
 		{
 			vars1[i] = new SCIP_VAR * [2] { z, s[i] };
-			SCIPcreateConsLinear(scip, &cons1[i], "cons1", 2, vars1[i], coef1, T[i], SCIPinfinity(scip), 1, 0, 1, 1, 1, 1, 0, 0, 0, 0);
+			SCIPcreateConsLinear(scip, &cons1[i], "cons1", 2, vars1[i], coef1, prb->getLengths()[i], SCIPinfinity(scip), 1, 0, 1, 1, 1, 1, 0, 0, 0, 0);
 			SCIPaddCons(scip, cons1[i]);
 
 			vars2[i] = new SCIP_VAR* [m];
@@ -115,7 +113,7 @@ namespace TxnSP
 			for (int k = 0; k < n; k++)
 			{
 				vars3[i][k] = new SCIP_VAR * [3] { s[i], pre[i][k], s[k] };
-				SCIPcreateConsLinear(scip, &cons3[i][k], "cons3", 3, vars3[i][k], coef3, T[k] - M, SCIPinfinity(scip), 1, 0, 1, 1, 1, 1, 0, 0, 0, 0);
+				SCIPcreateConsLinear(scip, &cons3[i][k], "cons3", 3, vars3[i][k], coef3, prb->getLengths()[k] - M, SCIPinfinity(scip), 1, 0, 1, 1, 1, 1, 0, 0, 0, 0);
 				SCIPaddCons(scip, cons3[i][k]);
 
 				cons4[i][k] = new SCIP_CONS * [m];
@@ -130,7 +128,7 @@ namespace TxnSP
 						SCIPaddCons(scip, cons4[i][k][j]);
 					}
 
-					if (conf[i][k])
+					if (prb->getConflicts()[i][k])
 					{
 						vars5[i][k] = new SCIP_VAR * [2] {pre[i][k], pre[k][i]};
 						SCIPcreateConsLinear(scip, &cons5[i][k], "cons5", 2, vars5[i][k], coef5, 1.0, 1.0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0);
@@ -145,8 +143,8 @@ namespace TxnSP
 		SCIP_STATUS status = SCIPgetStatus(scip);
 		SCIP_SOL* sol = SCIPgetBestSol(scip);
 
-		int* resx = new int[n];
-		double* ress = new double[n];
+		std::vector<int> resx(n);
+		std::vector<double> ress(n);
 
 
 		SCIPreleaseVar(scip, &z);
@@ -174,7 +172,7 @@ namespace TxnSP
 						delete[] vars4[i][k][j];
 					}
 
-					if (conf[i][k])
+					if (prb->getConflicts()[i][k])
 					{
 						SCIPreleaseCons(scip, cons5[i] + k);
 						delete[] vars5[i][k];
@@ -229,20 +227,15 @@ namespace TxnSP
 
 		delete[] coef2;		
 
+		double end = std::chrono::steady_clock::now().time_since_epoch().count();
+		
 		if (status == SCIP_STATUS_OPTIMAL)
 		{
-			double end = std::chrono::steady_clock::now().time_since_epoch().count();
-			SolverOutput* res = new SolverOutput(prb, resx, ress, (end - beg) / 1000000000);
-			delete[] resx;
-			delete[] ress;
-			return res;
+			return SolverOutput(prb, resx, ress, (end - beg) / 1000000000);
 		}
 		else
 		{
-			delete[] resx;
-			delete[] ress;
-			
-			return nullptr;
+			return SolverOutput(prb, (end - beg) / 1000000000);
 		}
     }
 }

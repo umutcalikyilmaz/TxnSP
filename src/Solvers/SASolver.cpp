@@ -17,33 +17,33 @@ namespace TxnSP
 		T_ = T_ / (1 + decrementParameter_ * T_);
 	}
 
-    void SASolver::permute(int* list, int ind1, int ind2)
+    void SASolver::permute(std::vector<int>& list, int ind1, int ind2)
 	{
 		int temp = list[ind1];
 		list[ind1] = list[ind2];
 		list[ind2] = temp;
 	}
 
-    void SASolver::randomize(int size, int* ind1, int* ind2)
+    void SASolver::randomize(int size, int& ind1, int& ind2)
 	{
-		(*ind1) = rnd_->generate();
+		ind1 = rnd_->generate();
 
 		do
 		{
-			(*ind2) = rnd_->generate();
+			ind2 = rnd_->generate();
 		} 
-		while ((*ind1) == (*ind2));
+		while (ind1 == ind2);
 	}
 
-	void SASolver::randomize(int* list, int size)
+	void SASolver::randomize(std::vector<int>& list, int size)
 	{
 		int ind1;
 		int ind2;
-		randomize(size, &ind1, &ind2);
+		randomize(size, ind1, ind2);
 		permute(list, ind1, ind2);
 	}
 
-    SolverOutput* SASolver::solve(const SolverInput& input)
+    SolverOutput SASolver::solve(const SolverInput& input)
     {
 		double beg = std::chrono::steady_clock::now().time_since_epoch().count();
         Problem* prb = input.prb;
@@ -51,12 +51,12 @@ namespace TxnSP
 		if(prb->getJobNumber() <= prb->getMachineNumber())
         {
             double end = std::chrono::steady_clock::now().time_since_epoch().count();
-            return new SolverOutput(prb, (end - beg) / 1000000000);
+            return SolverOutput(prb, (end - beg) / 1000000000);
         }
 
         int n = prb->getJobNumber();
 		int m = prb->getMachineNumber();		
-		__uint128_t size = prb->getSize();
+		LargeInt size = prb->getSize();
 
 		switch (input.SA_DecrementType)
 		{
@@ -71,11 +71,11 @@ namespace TxnSP
 			break;
 		}
 
-		SchedulePool schp(n, m, 2);
-        int* state = new int[n];
-        int* bestState = new int[n];
-        prob_ = new UniformRandomDoubleGenerator(0, 1);
-        rnd_ = new UniformRandomIntGenerator(0, n - 1);
+		SchedulePool schp(n, m);
+        std::vector<int> state(n);
+        std::vector<int> bestState(n);
+        prob_ = std::make_unique<UniformRandomDoubleGenerator>(0, 1);
+        rnd_ =  std::make_unique<UniformRandomIntGenerator>(0, n - 1);
 		T_ = input.SA_MaxTemperature;
 		decrementParameter_ = input.SA_DecrementParameter;
 
@@ -98,15 +98,15 @@ namespace TxnSP
 
         copy(state, bestState, n);
 
-        Schedule* sch = schp.getSchedule(prb, state);
+        std::unique_ptr<Schedule> sch = schp.getSchedule(prb, state);
 		cost = sch->getMakespan();
 		bestCost = cost;
 
 		while (T_ > 0.000001)
 		{
-			randomize(n, &ind1, &ind2);
+			randomize(n, ind1, ind2);
 			permute(state, ind1, ind2);
-			schp.returnSchedule(sch);
+			schp.returnSchedule(std::move(sch));
 			sch = schp.getSchedule(prb, state);
 			tempCost = sch->getMakespan();
 
@@ -139,13 +139,6 @@ namespace TxnSP
 		}
 
 		double end = std::chrono::steady_clock::now().time_since_epoch().count();
-		SolverOutput* res = new SolverOutput(prb, bestState, (end - beg) / 1000000000);
-
-		delete[] state;
-        delete[] bestState;
-        delete prob_;
-        delete rnd_;
-
-		return res;
+		return SolverOutput(prb, bestState, (end - beg) / 1000000000);
     }
 }

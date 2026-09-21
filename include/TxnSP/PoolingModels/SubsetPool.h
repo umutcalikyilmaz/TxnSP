@@ -7,20 +7,17 @@ namespace TxnSP
     {
     public:
 
-        SubsetPool(int problemSize, int max, SchedulePool* schedulePool);
+        SubsetPool(int problemSize, SchedulePool* schedulePool);
 
-        Subset* getSubset(int size, int scheduleNumber, Schedule** schedule);
+        std::unique_ptr<Subset> getSubset(int size, std::span<std::unique_ptr<Schedule>> schedule);
 
-        Subset* getSubset(int size, int scheduleNumber, Schedule** schedule, double makespan);
+        std::unique_ptr<Subset> getSubset(int size, std::span<std::unique_ptr<Schedule>> schedule, double makespan);
 
-        void returnSubset(Subset* subset);
-
-        ~SubsetPool();
+        void returnSubset(std::unique_ptr<Subset> subset);
 
     private:
 
-        std::vector<Subset*> subsets_;
-        std::queue<Subset*> subsetQueue_;
+        std::queue<std::unique_ptr<Subset>> subsetQueue_;
         SchedulePool* schedulePool_;
         int problemSize_;
         int inUse_;

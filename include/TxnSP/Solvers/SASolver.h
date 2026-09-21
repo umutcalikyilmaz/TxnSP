@@ -9,12 +9,12 @@ namespace TxnSP
     {
     public:
 
-        SolverOutput* solve(const SolverInput& input) override;
+        SolverOutput solve(const SolverInput& input) override;
 
     private:
 
-        UniformRandomDoubleGenerator* prob_;
-        UniformRandomIntGenerator* rnd_;
+        std::unique_ptr<UniformRandomDoubleGenerator> prob_;
+        std::unique_ptr<UniformRandomIntGenerator> rnd_;
         void (SASolver::*decrementPtr_)();
         double T_;
         double decrementParameter_;        
@@ -25,10 +25,10 @@ namespace TxnSP
 
         void decrementSlow();
 
-        void permute(int* list, int ind1, int ind2);
+        void permute(std::vector<int>& list, int ind1, int ind2);
 
-        void randomize(int size, int* ind1, int* ind2);
+        void randomize(int size, int& ind1, int& ind2);
 
-        void randomize(int* list, int size);
+        void randomize(std::vector<int>& list, int size);
     };
 }

@@ -8,6 +8,6 @@ namespace TxnSP
     {        
     public:
 
-        SolverOutput* solve(const SolverInput& input) override;
+        SolverOutput solve(const SolverInput& input) override;
     };
 }

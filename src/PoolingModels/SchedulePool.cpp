@@ -2,125 +2,99 @@
 
 namespace TxnSP
 {
-    SchedulePool::SchedulePool(int n, int m, int max) : jobNumber_(n), machineNumber_(m), inUse_(0), schedules_(max) { }
+    SchedulePool::SchedulePool(int n, int m)
+        : jobNumber_(n),
+          machineNumber_(m),
+          inUse_(0) { }
 
-    Schedule* SchedulePool::getSchedule(Schedule* sch)
+    std::unique_ptr<Schedule> SchedulePool::getSchedule(Schedule* sch)
     {
         inUse_++;
-        Schedule* res;
 
         if(scheduleQueue_.empty())
         {
-            res = new Schedule(sch);
-            schedules_.push_back(res);            
+            return std::make_unique<Schedule>(sch);           
         }
         else
         {
-            res = scheduleQueue_.front();
+            std::unique_ptr<Schedule> res = move(scheduleQueue_.front());
             scheduleQueue_.pop();
             res->change(sch);
+            return res;
         }
-
-        return res;
     }
 
-    Schedule* SchedulePool::getSchedule(Problem* prb, int job)
+    std::unique_ptr<Schedule> SchedulePool::getSchedule(Problem* prb, int job)
     {
         inUse_++;
-        Schedule* res;
 
         if(scheduleQueue_.empty())
         {
-            res = new Schedule(prb, job);
-            schedules_.push_back(res);            
+            return std::make_unique<Schedule>(prb, job);           
         }
         else
         {
-            res = scheduleQueue_.front();
+            std::unique_ptr<Schedule> res = std::move(scheduleQueue_.front());
             scheduleQueue_.pop();
             res->change(prb, job);
+            return res;
         }
-
-        return res;
     }
 
-    Schedule* SchedulePool::getSchedule(Problem* prb, Schedule* sch, int job)
+    std::unique_ptr<Schedule> SchedulePool::getSchedule(Problem* prb, Schedule* sch, int job)
     {
         inUse_++;
-        Schedule* res;
 
         if(scheduleQueue_.empty())
         {
-            res = new Schedule(prb, sch, job);
-            schedules_.push_back(res);            
+            return std::make_unique<Schedule>(prb, sch, job);       
         }
         else
         {
-            res = scheduleQueue_.front();
+            std::unique_ptr<Schedule> res = std::move(scheduleQueue_.front());
             scheduleQueue_.pop();
             res->change(prb, sch, job);
+            return res;
         }
-
-        return res;
     }
 
-    Schedule* SchedulePool::getSchedule(Problem* prb, __uint128_t index, int* perm, int* a)
+    std::unique_ptr<Schedule> SchedulePool::getSchedule(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a)
     {
         inUse_++;
-        Schedule* res;
 
         if(scheduleQueue_.empty())
         {
-            res = new Schedule(prb, index, perm, a);
-            schedules_.push_back(res);            
+            return std::make_unique<Schedule>(prb, index, perm, a);        
         }
         else
         {
-            res = scheduleQueue_.front();
+            std::unique_ptr<Schedule> res = std::move(scheduleQueue_.front());
             scheduleQueue_.pop();
             res->change(prb, index, perm, a);
+            return res;
         }
-
-        return res;
     }
 
-    Schedule* SchedulePool::getSchedule(Problem* prb, int* state)
+    std::unique_ptr<Schedule> SchedulePool::getSchedule(Problem* prb, const std::vector<int>& state)
     {
         inUse_++;
-        Schedule* res;
 
         if(scheduleQueue_.empty())
         {
-            res = new Schedule(prb, state);
-            schedules_.push_back(res);            
+            return std::make_unique<Schedule>(prb, state);          
         }
         else
         {
-            res = scheduleQueue_.front();
+            std::unique_ptr<Schedule> res = std::move(scheduleQueue_.front());
             scheduleQueue_.pop();
             res->change(prb, state);
+            return res;
         }
-
-        return res;
     }
 
-    void SchedulePool::returnSchedule(Schedule* sch)
+    void SchedulePool::returnSchedule(std::unique_ptr<Schedule> sch)
     {
         inUse_--;
-        scheduleQueue_.push(sch);
-    }
-
-    SchedulePool::~SchedulePool()
-    {
-		while(!scheduleQueue_.empty())
-		{
-			scheduleQueue_.pop();
-		}        
-
-		while(!schedules_.empty())
-		{
-			delete schedules_.back();
-			schedules_.pop_back();
-		}
+        scheduleQueue_.push(move(sch));
     }
 }

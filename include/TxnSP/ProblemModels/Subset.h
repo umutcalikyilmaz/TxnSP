@@ -7,15 +7,19 @@ namespace TxnSP
     {
     public:
 
+        Subset(int problemSize, int size, std::span<std::unique_ptr<Schedule>> schedules,
+            SchedulePool* schedulePool);
+
+        Subset(int problemSize, int size, std::span<std::unique_ptr<Schedule>> schedules, double makespan,
+            SchedulePool* schedulePool);
+
 		int getScheduleNumber();
 
         Schedule* getSchedule(int ind);
 
-        friend class SubsetPool;
-
     private:
 
-        Schedule** list_;
+        std::vector<std::unique_ptr<Schedule>> list_;
         SchedulePool* schedulePool_;
         int problemSize_;
         int size_;
@@ -29,16 +33,14 @@ namespace TxnSP
 
         void eliminate(double makespan);
 
-        void eliminate(double makespan, double mintime);      
+        void eliminate(double makespan, double mintime);
 
-        Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, SchedulePool* schedulePool);
+        void change(int size, std::span<std::unique_ptr<Schedule>> schedules);
 
-        Subset(int problemSize, int size, int scheduleNumber, Schedule** schedules, double makespan, SchedulePool* schedulePool);
+        void change(int size, std::span<std::unique_ptr<Schedule>> schedules, double makespan);
 
-        void change(int size, int scheduleNumber, Schedule** schedules);
+        void clearSchedules();
 
-        void change(int size, int scheduleNumber, double makespan, Schedule** schedules); 
-
-        ~Subset();
+        friend class SubsetPool;
     };
 }

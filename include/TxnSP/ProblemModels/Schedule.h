@@ -7,7 +7,17 @@ namespace TxnSP
 {
     class Schedule
     {
-    public:        
+    public:    
+    
+        Schedule(Schedule* sch);
+
+        Schedule(Problem* prb, int job);
+
+        Schedule(Problem* prb, Schedule* sch, int job);
+
+        Schedule(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a);
+
+        Schedule(Problem* prb, const std::vector<int>& state);
 
         int getJobNumber() const;
 
@@ -21,42 +31,28 @@ namespace TxnSP
 
 		int getMinimumMachine() const;
 
-		int** getJobs() const;
+		const std::vector<std::vector<int>>& getJobs() const;
 
-		double* getProcessingTimes() const;
+		const std::vector<double>& getProcessingTimes() const;
 
-		int* getLastJobs() const;
-
-		int* getJobNumbers() const;
+		const std::vector<int>& getLastJobs() const;
 
         bool isEquivalent(Schedule* sch);
 
-        friend class SchedulePool;
-
     private:
 
-        double* processingTimes_;
-        int** jobs_;
-        int* lastJobs_;	
-        int* jobNumbers_;
-        int* order_;
+        std::vector<double> processingTimes_;
+        std::vector<std::vector<int>> jobs_;
+        std::vector<int> lastJobs_;
+        std::vector<int> order_;
         double makespan_;
         double minimumTime_;
         int minimumMachine_;
         int jobNumber_;
         int machineNumber_;
         int size_;
-        bool del_;
 
-        Schedule(Schedule* sch);
-
-        Schedule(Problem* prb, int job);
-
-        Schedule(Problem* prb, Schedule* sch, int job);
-
-        Schedule(Problem* prb, __uint128_t index, int* perm, int* a);
-
-        Schedule(Problem* prb, int* state);
+        void initialize(Problem* prb, const std::vector<int>& state);
 
         void change(Schedule* sch);
 
@@ -64,10 +60,10 @@ namespace TxnSP
 
         void change(Problem* prb, Schedule* sch, int job);
 
-        void change(Problem* prb, __uint128_t index, int* perm, int* a);
+        void change(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a);
 
-        void change(Problem* prb, int* state);
+        void change(Problem* prb, const std::vector<int>& state);
 
-        ~Schedule();
+        friend class SchedulePool;
     };
 }

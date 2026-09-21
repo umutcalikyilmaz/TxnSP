@@ -2,66 +2,50 @@
 
 namespace TxnSP
 {
-    SubsetPool::SubsetPool(int problemSize, int max, SchedulePool* schedulePool) : problemSize_(problemSize), inUse_(0),
-    schedulePool_(schedulePool), subsets_(max) { }
+    SubsetPool::SubsetPool(int problemSize, SchedulePool* schedulePool)
+        : problemSize_(problemSize),
+          inUse_(0),
+          schedulePool_(schedulePool) { }
 
-    Subset* SubsetPool::getSubset(int size, int scheduleNumber, Schedule** schedule)
+    std::unique_ptr<Subset> SubsetPool::getSubset(int size, std::span<std::unique_ptr<Schedule>> schedules)
     {
         inUse_++;
-        Subset* res;
 
         if(subsetQueue_.empty())
         {
-            res = new Subset(problemSize_, size, scheduleNumber, schedule, schedulePool_);
-            subsets_.push_back(res);
+            return std::make_unique<Subset>(problemSize_, size, schedules, schedulePool_);
         }
         else
         {
-            res = subsetQueue_.front();
+            std::unique_ptr<Subset> res = std::move(subsetQueue_.front());
             subsetQueue_.pop();
-            res->change(problemSize_, size, scheduleNumber, schedule);
+            res->change(size, schedules);
+            return res;
         }
-
-        return res;
     }
 
-    Subset* SubsetPool::getSubset(int size, int schNum, Schedule** sch, double makespan)
+    std::unique_ptr<Subset> SubsetPool::getSubset(int size, std::span<std::unique_ptr<Schedule>> schedules,
+        double makespan)
     {
         inUse_++;
-        Subset* res;
 
         if(subsetQueue_.empty())
         {
-            res = new Subset(problemSize_, size, schNum, sch, makespan, schedulePool_);
-            subsets_.push_back(res);
+            return std::make_unique<Subset>(problemSize_, size, schedules, makespan, schedulePool_);
         }
         else
         {
-            res = subsetQueue_.front();
+            std::unique_ptr<Subset> res = std::move(subsetQueue_.front());
             subsetQueue_.pop();
-            res->change(size, schNum, makespan, sch);
+            res->change(size, schedules, makespan);
+            return res;
         }
-
-        return res;
     }
 
-    void SubsetPool::returnSubset(Subset* subset)
+    void SubsetPool::returnSubset(std::unique_ptr<Subset> subset)
     {
         inUse_--;
-        subsetQueue_.push(subset);
-    }
-
-    SubsetPool::~SubsetPool()
-    {
-        while (subsetQueue_.empty())
-        {
-            subsetQueue_.pop();
-        }
-
-        while (!subsets_.empty())
-        {
-            delete subsets_.back();
-            subsets_.pop_back();
-        }
+        subset->clearSchedules();
+        subsetQueue_.push(std::move(subset));
     }
 }

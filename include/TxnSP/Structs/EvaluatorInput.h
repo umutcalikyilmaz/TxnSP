@@ -7,7 +7,6 @@ namespace TxnSP
 {
     struct EvaluatorInput
     {
-        string directory;
         std::vector<std::pair<double,double>> uniformParameters;
         std::vector<std::pair<double,double>> normalParameters;
         std::vector<double>conflictParities;

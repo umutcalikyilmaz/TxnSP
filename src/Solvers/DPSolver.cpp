@@ -2,237 +2,189 @@
 
 namespace TxnSP
 {
-    SolverOutput* DPSolver::solveExact(Problem* prb)
+    SolverOutput DPSolver::solveExact(Problem* prb)
     {
         double beg = std::chrono::steady_clock::now().time_since_epoch().count();
 
         if(prb->getJobNumber() <= prb->getMachineNumber())
         {
             double end = std::chrono::steady_clock::now().time_since_epoch().count();
-            SolverOutput* res = new SolverOutput(prb, (end - beg) / 1000000000);
+            return SolverOutput(prb, (end - beg) / 1000000000);
         }
 
-        Subset** subsets[2];
-		subsets[0] = new Subset*[subsetNumber_];
-		subsets[1] = new Subset*[subsetNumber_];
-        bool* blist = new bool[jobNumber_];
+        std::vector<std::vector<std::unique_ptr<Subset>>> subsets(2);
+        std::vector<uint8_t> blist(jobNumber_);
 
 		for (int i = 0; i < jobNumber_; i++)
 		{            	
-			Schedule** slist = new Schedule*[1];
-			slist[0] = schedulePool_->getSchedule(prb, i);
-            subsets[0][i] = subsetPool_->getSubset(1, 1, slist);
+			std::vector<std::unique_ptr<Schedule>> slist(1);
+			slist[0] = move(schedulePool_->getSchedule(prb, i));
+            subsets[0].push_back(move(subsetPool_->getSubset(1, slist)));
 		}
 
-        int maxSch = 1;
-        int maxNum;
 		int oind;
-		int nind;
-		int preNum;
-		int curNum = jobNumber_;        
+		int nind;       
 
         for(int i = 2; i <= jobNumber_; i++)
-        {            
-            maxNum = maxSch * i;
-			maxSch = 0;
-			preNum = curNum;
-			curNum = combination(jobNumber_, i);
+        {
+			int curNum = combination(jobNumber_, i);
 			oind = i % 2;
 			nind = 1 - oind;
 
             for (int j = 0; j < curNum; j++)
             {
                 decode(blist, j, jobNumber_, i);
-                double minimax = 1.7976931e+308;
-				int schCount = 0;
-				Schedule** slist = new Schedule*[maxNum];
+                double minimax = DBL_MAX;
+				std::vector<std::unique_ptr<Schedule>> slist;
 
                 for(int k = 0; k < jobNumber_; k++)
                 {
                     if(blist[k])
                     {
-                        blist[k] = false;
+                        blist[k] = 0;
                         int ind = encode(blist, jobNumber_, i - 1);
-                        blist[k] = true;
-                        Subset* currentSS = subsets[oind][ind];
+                        blist[k] = 1;
 
-                        for(int l = 0; l < currentSS->getScheduleNumber(); l++)
+                        for(int l = 0; l < subsets[oind][ind]->getScheduleNumber(); l++)
                         {
-                            Schedule* temp = schedulePool_->getSchedule(prb, currentSS->getSchedule(l), k);
+                            std::unique_ptr<Schedule> temp = schedulePool_->getSchedule(prb,
+                                subsets[oind][ind]->getSchedule(l), k);
 
                             if(temp->getMakespan() < minimax)
 							{
 								minimax = temp->getMakespan();
-								slist[schCount] = temp;
-								schCount++;
+								slist.push_back(move(temp));
 							}
 							else if(temp->getMinimumTime() < minimax)
 							{
-								slist[schCount] = temp;
-								schCount++;
+								slist.push_back(move(temp));
 							}
 							else
 							{
-								schedulePool_->returnSchedule(temp);
+								schedulePool_->returnSchedule(move(temp));
 							}
                         }
                     }
                 }
 
-                subsets[nind][j] = subsetPool_->getSubset(i, schCount, slist, minimax);
-
-				if (schCount > maxSch)
-				{
-					maxSch = schCount;
-				}
+                subsets[nind].push_back(subsetPool_->getSubset(i, slist, minimax));
             }
 
-            for (int x = 0; x < preNum; x++)
-			{
-				subsetPool_->returnSubset(subsets[oind][x]);
-			}
+            for(auto& subset : subsets[oind])
+            {
+                subsetPool_->returnSubset(move(subset));
+            }
+
+            subsets[oind].clear();
         }
 
         double end = std::chrono::steady_clock::now().time_since_epoch().count();
-        SolverOutput* res = new SolverOutput(prb, subsets[nind][0]->getSchedule(0), (end - beg) / 1000000000);
-		subsetPool_->returnSubset(subsets[nind][0]);
+        SolverOutput res(prb, subsets[nind][0]->getSchedule(0), (end - beg) / 1000000000);
+		subsetPool_->returnSubset(move(subsets[nind][0]));
 
-		delete[] blist;
-        delete[] subsets[0];
-        delete[] subsets[1];
+        subsetPool_ = nullptr;
+        schedulePool_ = nullptr;
 
 		return res;
     }
 
-	SolverOutput* DPSolver::solveApproximate(Problem* prb)
+	SolverOutput DPSolver::solveApproximate(Problem* prb)
     {
         double beg = std::chrono::steady_clock::now().time_since_epoch().count();
 
         if(prb->getJobNumber() <= prb->getMachineNumber())
         {
             double end = std::chrono::steady_clock::now().time_since_epoch().count();
-            return new SolverOutput(prb, (end - beg) / 1000000000);
+            return SolverOutput(prb, (end - beg) / 1000000000);
         }
 
-        bool* blist = new bool[jobNumber_];
-        Subset** subsets[2];
-		subsets[0] = new Subset*[subsetNumber_];
-		subsets[1] = new Subset*[subsetNumber_];
-
-        for(int i = 0; i < jobNumber_; i++)
-        {
-            blist[i] = false;
-        }
+        std::vector<std::vector<std::unique_ptr<Subset>>> subsets(2);
+        std::vector<uint8_t> blist(jobNumber_);
 
 		for (int i = 0; i < jobNumber_; i++)
 		{            	
-			Schedule** slist = new Schedule*[1];
-			slist[0] = schedulePool_->getSchedule(prb, i);
-            subsets[0][i] = subsetPool_->getSubset(1, 1, slist);
+			std::vector<std::unique_ptr<Schedule>> slist(1);
+			slist[0] = move(schedulePool_->getSchedule(prb, i));
+            subsets[0].push_back(move(subsetPool_->getSubset(1, slist)));
 		}
 
-        int maxSch = 1;
-        int maxNum;
 		int oind;
 		int nind;
-		int preNum;
-		int curNum = jobNumber_;
 
         for(int i = 2; i <= jobNumber_; i++)
         {
-			preNum = curNum;
-			curNum = combination(jobNumber_, i);
+			int curNum = combination(jobNumber_, i);
 			oind = i % 2;
 			nind = 1 - oind;
 
             for (int j = 0; j < curNum; j++)
             {
                 decode(blist, j, jobNumber_, i);
-                double minimax = 1.7976931e+308;
+                double minimax = DBL_MAX;
 				bool full = false;
-				Schedule** slist = new Schedule*[1];
+				std::vector<std::unique_ptr<Schedule>> slist;
 
                 for(int k = 0; k < jobNumber_; k++)
                 {
                     if(blist[k])
                     {
-                        blist[k] = false;
+                        blist[k] = 0;
                         int ind = encode(blist, jobNumber_, i - 1);                        
-                        blist[k] = true;
-                        
-                        Subset* currentSS = subsets[oind][ind];
-                        Schedule* temp = schedulePool_->getSchedule(prb, currentSS->getSchedule(0), k);
+                        blist[k] = 1;
+
+                        std::unique_ptr<Schedule> temp = std::move(schedulePool_->getSchedule(prb,
+                            subsets[oind][ind]->getSchedule(0), k));
 
                         if (temp->getMakespan() < minimax)
 						{
 							if (full)
 							{
-								schedulePool_->returnSchedule(*slist);
+								schedulePool_->returnSchedule(std::move(slist[0]));
+                                slist[0] = move(temp);
 							}
-
-							full = true;
-							*slist = temp;
-							minimax = temp->getMakespan();
+                            else
+                            {
+                                full = true;
+                                minimax = temp->getMakespan();
+                                slist.push_back(std::move(temp));
+                            }							
 						}
 						else
 						{
-							schedulePool_->returnSchedule(temp);
+							schedulePool_->returnSchedule(std::move(temp));
 						}                        
                     }
                 }
 
-                subsets[nind][j] = subsetPool_->getSubset(i, 1, slist);                
+                subsets[nind].push_back(subsetPool_->getSubset(i, slist)); 
             }
 
-            for (int x = 0; x < preNum; x++)
-			{
-				subsetPool_->returnSubset(subsets[oind][x]);
-			}           
+            for(auto& subset : subsets[oind])
+            {
+                subsetPool_->returnSubset(move(subset));
+            }
+
+            subsets[oind].clear();
         }
 
         double end = std::chrono::steady_clock::now().time_since_epoch().count();
-        SolverOutput* res = new SolverOutput(prb, subsets[nind][0]->getSchedule(0), (end - beg) / 1000000000);
-		subsetPool_->returnSubset(subsets[nind][0]);
+        SolverOutput res(prb, subsets[nind][0]->getSchedule(0), (end - beg) / 1000000000);
+		subsetPool_->returnSubset(std::move(subsets[nind][0]));
 
-		delete[] blist;
-        delete[] subsets[0];
-        delete[] subsets[1];
+        subsetPool_ = nullptr;
+        schedulePool_ = nullptr;
 
 		return res;
     }
 
-    DPSolver::DPSolver() : jobNumber_(0), machineNumber_(0), init_(false) { }
-
-    SolverOutput* DPSolver::solve(const SolverInput& input)
+    SolverOutput DPSolver::solve(const SolverInput& input)
     {
-        if(input.prb->getJobNumber() != jobNumber_ || input.prb->getMachineNumber() != machineNumber_ || input.DP_SolutionType != type_)
-        {
-            jobNumber_ = input.prb->getJobNumber();
-            machineNumber_ = input.prb->getMachineNumber();
-            type_ = input.DP_SolutionType;
-            subsetNumber_ = combination(jobNumber_, jobNumber_ / 2);
-            scheduleNumber_ = type_ == SolutionType::Approximate ? 2.5 * subsetNumber_ : log(jobNumber_) * pow(jobNumber_ * subsetNumber_, 2) / factorial(machineNumber_ - 1);
-
-            if(init_)
-            {                
-                delete subsetPool_;
-                delete schedulePool_;
-            }
-
-            schedulePool_ = new SchedulePool(jobNumber_, machineNumber_, scheduleNumber_);
-            subsetPool_ = new SubsetPool(jobNumber_, subsetNumber_, schedulePool_);
-            init_ = true;
-        }
+        jobNumber_ = input.prb->getJobNumber();
+        machineNumber_ = input.prb->getMachineNumber();
+        type_ = input.DP_SolutionType;
+        schedulePool_ = std::make_unique<SchedulePool>(jobNumber_, machineNumber_);
+        subsetPool_ = std::make_unique<SubsetPool>(jobNumber_, schedulePool_.get());
 
         return type_ == SolutionType::Approximate ? solveApproximate(input.prb) : solveExact(input.prb);
-    }
-
-    DPSolver::~DPSolver()
-    {
-        if(init_)
-        {
-            delete schedulePool_;
-            delete subsetPool_;
-        }
     }
 }

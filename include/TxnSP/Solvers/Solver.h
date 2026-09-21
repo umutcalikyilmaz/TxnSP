@@ -7,6 +7,6 @@ namespace TxnSP
     class Solver
     {
     public:    
-        virtual SolverOutput* solve(const SolverInput& input) = 0;
+        virtual SolverOutput solve(const SolverInput& input) = 0;
     };
 }

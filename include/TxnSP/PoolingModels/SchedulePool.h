@@ -9,26 +9,23 @@ namespace TxnSP
     { 
     public:
 
-        SchedulePool(int n, int m, int max);
+        SchedulePool(int n, int m);
 
-        Schedule* getSchedule(Schedule* schedule);
+        std::unique_ptr<Schedule> getSchedule(Schedule* schedule);
 
-        Schedule* getSchedule(Problem* prb, int job);
+        std::unique_ptr<Schedule> getSchedule(Problem* prb, int job);
 
-        Schedule* getSchedule(Problem* prb, Schedule* schedule, int job);
+        std::unique_ptr<Schedule> getSchedule(Problem* prb, Schedule* schedule, int job);
 
-        Schedule* getSchedule(Problem* prb, __uint128_t index, int* perm, int* a);
+        std::unique_ptr<Schedule> getSchedule(Problem* prb, LargeInt index, std::vector<int>& perm, std::vector<int>& a);
 
-        Schedule* getSchedule(Problem* prb, int* state);
+        std::unique_ptr<Schedule> getSchedule(Problem* prb, const std::vector<int>& state);
 
-        void returnSchedule(Schedule* schedule);
-
-        ~SchedulePool();
+        void returnSchedule(std::unique_ptr<Schedule> schedule);
 
     private:
     
-        std::vector<Schedule*> schedules_;
-        std::queue<Schedule*> scheduleQueue_;
+        std::queue<std::unique_ptr<Schedule>> scheduleQueue_;
         int inUse_;
         int jobNumber_;
         int machineNumber_;

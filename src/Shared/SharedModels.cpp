@@ -2,9 +2,11 @@
 
 namespace TxnSP
 {
-	RandomNumberGenerator::RandomNumberGenerator() : generator(std::random_device{}()) { }
+	RandomNumberGenerator::RandomNumberGenerator()
+		: generator(std::random_device{}()) { }
 
-	NormalRandomNumberGenerator::NormalRandomNumberGenerator(double mean, double std) : normalDistribution_(mean, std) { }
+	NormalRandomNumberGenerator::NormalRandomNumberGenerator(double mean, double std)
+		: normalDistribution_(mean, std) { }
 
 	double NormalRandomNumberGenerator::generate()
 	{
@@ -16,7 +18,8 @@ namespace TxnSP
 		normalDistribution_.param(std::normal_distribution<double>::param_type(mean, std));
 	}
 	
-	UniformRandomIntGenerator::UniformRandomIntGenerator(int min, int max) : uniformDistribution_(min, max) { }
+	UniformRandomIntGenerator::UniformRandomIntGenerator(int min, int max)
+		: uniformDistribution_(min, max) { }
 
 	int UniformRandomIntGenerator::generate()
 	{
@@ -28,7 +31,8 @@ namespace TxnSP
 		uniformDistribution_.param(std::uniform_int_distribution<int>::param_type(min, max));
 	}
 
-	UniformRandomDoubleGenerator::UniformRandomDoubleGenerator(double min, double max) : uniformDistribution_(min, max) { }
+	UniformRandomDoubleGenerator::UniformRandomDoubleGenerator(double min, double max)
+		: uniformDistribution_(min, max) { }
 
 	double UniformRandomDoubleGenerator::generate()
 	{

@@ -5,14 +5,12 @@
 #include <chrono>
 #include <boost/multiprecision/cpp_int.hpp>
 
-using namespace std;
-
 namespace TxnSP
 {
     class RandomNumberGenerator
 	{
 	protected:
-		minstd_rand generator;
+		std::minstd_rand generator;
 
 		RandomNumberGenerator();
 	};
@@ -29,7 +27,7 @@ namespace TxnSP
 
 	private:
 		
-		normal_distribution<double> normalDistribution_;
+		std::normal_distribution<double> normalDistribution_;
 	};
 
 	class UniformRandomIntGenerator : public RandomNumberGenerator
@@ -44,7 +42,7 @@ namespace TxnSP
 
 	private:
 
-		uniform_int_distribution<int> uniformDistribution_;
+		std::uniform_int_distribution<int> uniformDistribution_;
 	};
 
 	class UniformRandomDoubleGenerator : public RandomNumberGenerator
@@ -59,6 +57,6 @@ namespace TxnSP
 
 	private:
 
-		uniform_real_distribution<double> uniformDistribution_;
+		std::uniform_real_distribution<double> uniformDistribution_;
 	};
 }

@@ -9,26 +9,19 @@ namespace TxnSP
     class DPSolver : public Solver
     {
     public:
-    
-        DPSolver();
 
-        SolverOutput* solve(const SolverInput& input) override;
-
-        ~DPSolver();
+        SolverOutput solve(const SolverInput& input) override;
 
     private:
         
-        SchedulePool* schedulePool_;
-        SubsetPool* subsetPool_;
+        std::unique_ptr<SchedulePool> schedulePool_;
+        std::unique_ptr<SubsetPool> subsetPool_;
         int jobNumber_;
-        int machineNumber_;		
-        int subsetNumber_;
-        int scheduleNumber_;
+        int machineNumber_;
         SolutionType type_;
-        bool init_;
 
-        SolverOutput* solveExact(Problem* prb);
+        SolverOutput solveExact(Problem* prb);
 
-        SolverOutput* solveApproximate(Problem* prb);
+        SolverOutput solveApproximate(Problem* prb);
     };
 }

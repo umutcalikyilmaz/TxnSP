@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <boost/multiprecision/cpp_int.hpp>
 
+using LargeInt = boost::multiprecision::cpp_int;
 namespace TxnSP
 {
     enum class ProbabilityDistribution : uint8_t

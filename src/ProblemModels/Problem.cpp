@@ -2,8 +2,14 @@
 
 namespace TxnSP
 {
-    Problem::Problem(int jobNumber, int machineNumber, double* lengths, bool** conflicts) : jobNumber_(jobNumber),
-    machineNumber_(machineNumber), lengths_(lengths), conflicts_(conflicts), divid_(new int[jobNumber]), size_(1)
+    Problem::Problem(int jobNumber, int machineNumber, const std::vector<double>& lengths,
+        const std::vector<std::vector<uint8_t>>& conflicts)
+        : jobNumber_(jobNumber),
+          machineNumber_(machineNumber),
+          lengths_(lengths),
+          conflicts_(conflicts),
+          divid_(jobNumber),
+          size_(1)
     {
         for (int i = 2; i <= jobNumber; i++)
 		{
@@ -22,28 +28,30 @@ namespace TxnSP
     }
 
     Problem::Problem(int jobNumber, int machineNumber, ProbabilityDistribution dist, double distributionparameter1,
-    double distributionParameter2, double conflictParity) : jobNumber_(jobNumber), machineNumber_(machineNumber), size_(1)
+        double distributionParameter2, double conflictParity)
+        : jobNumber_(jobNumber),
+          machineNumber_(machineNumber),
+          size_(1),
+          lengths_(jobNumber),
+          divid_(jobNumber),
+          conflicts_(jobNumber)
     {
         for (int i = 2; i <= jobNumber; i++)
 		{
 			size_ *= i;
 		}
 
-		lengths_ = new double[jobNumber];
-		divid_ = new int[jobNumber];
-		conflicts_ = new bool*[jobNumber];
-
-        NormalRandomNumberGenerator* nrnd;
-        UniformRandomDoubleGenerator* urnd;
+        std::unique_ptr<NormalRandomNumberGenerator> nrnd;
+        std::unique_ptr<UniformRandomDoubleGenerator> urnd;
         UniformRandomDoubleGenerator rnd2(0, 1);
 
         if(dist == ProbabilityDistribution::Normal)
         {
-            nrnd = new NormalRandomNumberGenerator(distributionparameter1, distributionParameter2);
+            nrnd = std::make_unique<NormalRandomNumberGenerator>(distributionparameter1, distributionParameter2);
         }
         else
         {
-            urnd = new UniformRandomDoubleGenerator(distributionparameter1, distributionParameter2);
+            urnd = std::make_unique<UniformRandomDoubleGenerator>(distributionparameter1, distributionParameter2);
         }
 
         double p;
@@ -56,14 +64,14 @@ namespace TxnSP
             }
             while(lengths_[i] < 0);
             
-            conflicts_[i] = new bool[jobNumber];
             divid_[i] = 1;
-            conflicts_[i][i] = false;
+            conflicts_[i].resize(jobNumber);
+            conflicts_[i][i] = 0;
 
             for(int j = 0; j < i; j++)
             {
                 p = rnd2.generate();
-                conflicts_[i][j] = p < conflictParity;
+                conflicts_[i][j] = p < conflictParity ? 1 : 0;
             }
 
             for(int j = 2; j < (jobNumber - i); j++)
@@ -79,15 +87,6 @@ namespace TxnSP
 				conflicts_[i][j] = conflicts_[j][i];
 			}
 		}
-
-        if(dist == ProbabilityDistribution::Normal)
-        {
-            delete nrnd;
-        }
-        else
-        {
-            delete urnd;
-        }
     }
 
     int Problem::getJobNumber() const
@@ -100,7 +99,7 @@ namespace TxnSP
         return machineNumber_;
     }
 
-	double* Problem::getLengths() const
+	const std::vector<double>& Problem::getLengths() const
     {
         return lengths_;
     }
@@ -110,17 +109,17 @@ namespace TxnSP
         return lengths_[ind];
     }
 
-    bool** Problem::getConflicts() const
+    const std::vector<std::vector<uint8_t>>& Problem::getConflicts() const
     {
         return conflicts_;
     }
 
-	int* Problem::getDivid() const
+	const std::vector<LargeInt>& Problem::getDivid() const
     {
         return divid_;
     }
 
-	__uint128_t Problem::getSize() const
+	LargeInt Problem::getSize() const
     {
         return size_;
     }
@@ -136,18 +135,5 @@ namespace TxnSP
 				conflicts_[i][j] = conflicts_[j][i];
 			}
 		}
-    }
-
-    Problem::~Problem()
-    {
-        delete[] lengths_;
-
-        for(int i = 0; i < jobNumber_; i++)
-        {
-            delete[] conflicts_[i];
-        }
-
-        delete[] conflicts_;
-        delete[] divid_;
     }
 }

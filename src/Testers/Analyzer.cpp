@@ -2,28 +2,47 @@
 
 namespace TxnSP
 {
-    void ThreadFunction(Problem** problems, int n, int m, int prbNum, double* spaceSizes, double* optNums, double* per1, double* per5, double* per10, double* per20)
+    bool Analyzer::pullProblem(std::unique_ptr<Problem>& prb, int& ind)
     {
-        int* perm = new int[n];
-		int* a = new int[n];
-        __uint128_t size = problems[0]->getSize();
+        std::lock_guard<std::mutex> lock(problemLock_);
 
-        for(int i = 0; i < prbNum; i++)
+        if(problemQueue_.empty())
         {
-            Problem* prb = problems[i];            
-            SchedulePool schp(n, m, 1);
-                       
-            Schedule* sch = schp.getSchedule(prb, 0, perm, a);
-            double opt = (double)((__uint128_t)(1000000 * sch->getMakespan())) / 1000000;
-            set<double> valueSet{ opt };
-            map<double,int> countMap;
-            countMap[opt] = 1;
-            
+            return false;
+        }
 
-            for(__uint128_t j = 1; j < size; j++)
+        prb = std::move(problemQueue_.front());
+        ind = indexQueue_.front();
+        problemQueue_.pop();
+        indexQueue_.pop();
+        return true;
+    }
+
+    void Analyzer::threadFunction(int n, int m, std::vector<int>& indices, std::vector<double>& spaceSizes,
+        std::vector<double>& optNums, std::vector<double>& per1, std::vector<double>& per5,
+        std::vector<double>& per10, std::vector<double>& per20)
+    {
+        std::vector<int> perm(n);
+		std::vector<int> a(n);
+        std::unique_ptr<Problem> prb;
+        int i = 0;
+        int ind;
+
+        while(pullProblem(prb, ind))
+        {
+            SchedulePool schp(n, m);
+            std::unique_ptr<Schedule> sch = schp.getSchedule(prb.get(), 0, perm, a);
+            double opt = (double)((__uint128_t)(1000000 * sch->getMakespan())) / 1000000;
+
+            std::set<double> valueSet{ opt };
+            std::map<double,int> countMap;
+            countMap[opt] = 1;
+            LargeInt size = prb->getSize();
+
+            for(LargeInt j = 1; j < size; j++)
             {
-                schp.returnSchedule(sch);
-                sch = schp.getSchedule(prb, j, perm, a);
+                schp.returnSchedule(std::move(sch));
+                sch = schp.getSchedule(prb.get(), j, perm, a);
                 double ms = (double)((__uint128_t)(1000000 * sch->getMakespan())) / 1000000;
 
                 if(valueSet.find(ms) == valueSet.end())
@@ -42,17 +61,17 @@ namespace TxnSP
                 }
             }
 
-            per1[i] = 0;
-            per5[i] = 0;
-            per10[i] = 0;
-            per20[i] = 0;
+            per1.push_back(0);
+            per5.push_back(0);
+            per10.push_back(0);
+            per20.push_back(0);
 
             double lim1 = opt * 1.01;
             double lim5 = opt * 1.05;
             double lim10 = opt * 1.1;
             double lim20 = opt * 1.2;
 
-            set<double>::iterator itr;
+            std::set<double>::iterator itr;
 
             for (itr = valueSet.begin(); itr != valueSet.end(); itr++) 
             {
@@ -77,13 +96,11 @@ namespace TxnSP
             per5[i] += per1[i];
             per10[i] += per5[i];
             per20[i] += per10[i];
-            optNums[i] = countMap[opt];
-            spaceSizes[i] = (double)valueSet.size();
-            delete prb;
+            optNums.push_back(countMap[opt]);
+            spaceSizes.push_back((double)valueSet.size());
+            indices.push_back(ind);
+            i++;
         }
-
-        delete[] perm;
-        delete[] a;
     }
 
     void Analyzer::analyze(const AnalyzerInput& inp)
@@ -93,74 +110,42 @@ namespace TxnSP
         double cpStep = inp.conflictParityStepSize;
         int prbNum = inp.problemNumber;
         int stepNum = 1 + (int)(1 / cpStep);
-        int totPrbNum = prbNum * (stepNum);
+        int totPrbNum = prbNum * stepNum;
         int n = inp.jobNumber;
         int m = inp.machineNumber;
         int threadCount = inp.threadCount;
         int threadStep = totPrbNum / threadCount;
         ProbabilityDistribution dist = inp.distribution;
         
-        SchedulePool schp(n, m, 1);
-        thread* threads = new thread[threadCount];
-        Problem*** problems = new Problem**[stepNum];
-        Problem*** thProblems = new Problem**[threadCount];        
-        double** spaceSizes = new double*[threadCount];
-        double** optNums = new double*[threadCount];
-        double** per1 = new double*[threadCount];
-        double** per5 = new double*[threadCount];
-        double** per10 = new double*[threadCount];
-        double** per20 = new double*[threadCount];
-        double* cps = new double[stepNum];
-        int* prbNums = new int[threadCount];        
-        double* finalSize = new double[stepNum];
-        double* finalOptNum = new double[stepNum];
-        double* finalPer1 = new double[stepNum];
-        double* finalPer5 = new double[stepNum];
-        double* finalPer10 = new double[stepNum];
-        double* finalPer20 = new double[stepNum];
-
-        for(int i = 0; i < threadCount - 1; i++)
-        {
-            prbNums[i] = threadStep;
-            spaceSizes[i] = new double[threadStep];
-            optNums[i] = new double[threadStep];
-            per1[i] = new double[threadStep];
-            per5[i] = new double[threadStep];
-            per10[i] = new double[threadStep];
-            per20[i] = new double[threadStep];
-        }
-
-        prbNums[threadCount - 1] = totPrbNum - (threadCount - 1) * threadStep;
-        spaceSizes[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        optNums[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        per1[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        per5[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        per10[threadCount - 1] = new double[prbNums[threadCount - 1]];
-        per20[threadCount - 1] = new double[prbNums[threadCount - 1]];
+        SchedulePool schp(n, m);
+        std::vector<std::jthread> threads;
+        std::vector<std::vector<int>> indices(threadCount);
+        std::vector<std::vector<double>> spaceSizes(threadCount);
+        std::vector<std::vector<double>> optNums(threadCount);
+        std::vector<std::vector<double>> per1(threadCount);
+        std::vector<std::vector<double>> per5(threadCount);
+        std::vector<std::vector<double>> per10(threadCount);
+        std::vector<std::vector<double>> per20(threadCount);
+        std::vector<double> cps(stepNum);
+        std::vector<double> finalSize(stepNum);
+        std::vector<double> finalOptNum(stepNum);
+        std::vector<double> finalPer1(stepNum);
+        std::vector<double> finalPer5(stepNum);
+        std::vector<double> finalPer10(stepNum);
+        std::vector<double> finalPer20(stepNum);
 
         int c = 0;
         double cp = 0;
         int threadInd = 0;
-        int count = 0;
-        thProblems[0] = new Problem*[prbNums[0]];
 
         while(cp <= 1)
         {
-            problems[c] = new Problem*[prbNum];
             cps[c] = cp;
 
             for(int i = 0; i < prbNum; i++)
             {
-                problems[c][i] = new Problem(n, m, dist, para1, para2, cp);
-                thProblems[threadInd][count] = problems[c][i];
-                count++;    
-
-                if(count == threadStep && threadInd != threadCount - 1)
-                {
-                    count = 0;
-                    threadInd++;
-                    thProblems[threadInd] = new Problem*[prbNums[threadInd]];
-                }            
+                problemQueue_.emplace(std::make_unique<Problem>(n, m, dist, para1, para2, cp));
+                indexQueue_.push(c);       
             }
 
             cp += cpStep;
@@ -172,60 +157,50 @@ namespace TxnSP
             }
         }
 
-        double prbSize = (double)problems[0][0]->getSize();
+        double prbSize = (double)problemQueue_.front()->getSize();
 
         for(int i = 0; i < threadCount; i++)
         {
-            threads[i] = thread(ThreadFunction, thProblems[i], n, m, prbNums[i], spaceSizes[i], optNums[i], per1[i], per5[i], per10[i], per20[i]);
+            threads.emplace_back(std::jthread([this, nn = n, mm = m, &ind = indices[i], &spc = spaceSizes[i],
+                &opt = optNums[i], &p1 = per1[i], &p5 = per5[i], &p10 = per10[i], &p20 = per20[i]]()
+            {
+                this->threadFunction(nn, mm, ind, spc, opt, p1, p5, p10, p20);
+            }));
         }
 
-        for(int i = 0; i < threadCount; i++)
-        {
-            threads[i].join();
-            delete[] thProblems[i];            
-        }
+        threads.clear();
 
-        threadInd = 0;
-        count = 0;
+        const std::filesystem::path filePath = std::filesystem::path(std::getenv("HOME")) / ".TxnSP";
+        std::filesystem::create_directory(filePath);
+        std::filesystem::create_directory(filePath / "analysis");
 
-        fstream file;
-        stringstream sstream;
+        std::fstream file;
+        std::stringstream sstream;
         sstream.setf(std::ios::fixed);
         sstream.precision(2);
-        sstream << inp.directory << n << "_" << m << "_" << (dist == ProbabilityDistribution::Normal ? "n" : "u") << "_" << para1 << "_" << para2 << "_" << cpStep << "_" << prbNum << "_" << ".csv";
-        file.open(sstream.str(), fstream::out | fstream::trunc);
-        
-        sstream.str(string());
+        sstream << n << "_" << m << "_" << (dist == ProbabilityDistribution::Normal ? "n" : "u")
+        << "_" << para1 << "_" << para2 << "_" << cpStep << "_" << prbNum << "_" << ".csv";
+        file.open(filePath / "analysis" / sstream.str(), std::fstream::out | std::fstream::trunc);
+
+        sstream.str(std::string());
         sstream.precision(3);
+
+        for(int i = 0; i < threadCount; i++)
+        {
+            for(int j = 0; j < spaceSizes[i].size(); j++)
+            {
+                int ind = indices[i][j];
+                finalSize[ind] += spaceSizes[i][j];
+                finalOptNum[ind] += optNums[i][j];
+                finalPer1[ind] += per1[i][j];
+                finalPer5[ind] += per5[i][j];
+                finalPer10[ind] += per10[i][j];
+                finalPer20[ind] += per20[i][j];
+            }            
+        }
 
         for(int i = 0; i < stepNum; i++)
         {
-            finalSize[i] = 0;
-            delete[] problems[i];
-
-            for(int j = 0; j < prbNum; j++)
-            {
-                finalSize[i] += spaceSizes[threadInd][count];
-                finalOptNum[i] += optNums[threadInd][count];
-                finalPer1[i] += per1[threadInd][count];
-                finalPer5[i] += per5[threadInd][count];
-                finalPer10[i] += per10[threadInd][count];
-                finalPer20[i] += per20[threadInd][count];
-                count++;
-
-                if(count == threadStep && threadInd != threadCount - 1)
-                {
-                    delete[] spaceSizes[threadInd];
-                    delete[] optNums[threadInd];
-                    delete[] per1[threadInd];
-                    delete[] per5[threadInd];
-                    delete[] per10[threadInd];
-                    delete[] per20[threadInd];
-                    threadInd ++;
-                    count = 0;
-                }                
-            }
-
             finalSize[i] /= prbNum;
             finalOptNum[i] /= prbNum;
             finalPer1[i] /= prbNum;
@@ -233,39 +208,17 @@ namespace TxnSP
             finalPer10[i] /= prbNum;
             finalPer20[i] /= prbNum;
 
-            sstream << cps[i] << "," << finalSize[i] << "," << to_string(finalSize[i] / (double)prbSize) << "," << finalOptNum[i] << "," << 
-            to_string(finalOptNum[i] / (double)prbSize) << "," << finalPer1[i] << "," << to_string(finalPer1[i] / (double)prbSize) << "," << 
-            finalPer5[i] << "," << to_string(finalPer5[i] / (double)prbSize) << "," << finalPer10[i] << "," << 
-            to_string(finalPer10[i] / (double)prbSize) << "," << finalPer20[i] << "," << to_string(finalPer20[i] / (double)prbSize) << "\n";
+            sstream << cps[i] << "," << finalSize[i] << "," << std::to_string(finalSize[i] / (double)prbSize)
+            << "," << finalOptNum[i] << "," << std::to_string(finalOptNum[i] / (double)prbSize) << "," <<
+            finalPer1[i] << "," << std::to_string(finalPer1[i] / (double)prbSize) << "," << finalPer5[i]
+            << "," << std::to_string(finalPer5[i] / (double)prbSize) << "," << finalPer10[i] << "," << 
+            std::to_string(finalPer10[i] / (double)prbSize) << "," << finalPer20[i] << "," <<
+            std::to_string(finalPer20[i] / (double)prbSize) << "\n";
 
             file << sstream.str();
-            sstream.str(string());
+            sstream.str(std::string());
             file.flush();
         }
-
-        delete[] spaceSizes[threadCount - 1];
-        delete[] optNums[threadCount - 1];
-        delete[] per1[threadCount - 1];
-        delete[] per5[threadCount - 1];
-        delete[] per10[threadCount - 1];
-        delete[] per20[threadCount - 1];
-        delete[] problems;
-        delete[] thProblems;
-        delete[] cps;
-        delete[] prbNums;
-        delete[] threads;
-        delete[] finalSize;
-        delete[] spaceSizes;
-        delete[] optNums;
-        delete[] per1;
-        delete[] per5;
-        delete[] per10;
-        delete[] per20;
-        delete[] finalOptNum;
-        delete[] finalPer1;
-        delete[] finalPer5;
-        delete[] finalPer10;
-        delete[] finalPer20;
 
         file.close();
     }

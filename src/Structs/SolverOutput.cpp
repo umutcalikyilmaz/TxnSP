@@ -2,36 +2,20 @@
 
 namespace TxnSP
 {
-	int Comp(const void* a, const void* b)
-	{
-		if ( *(double*)a < *(double*)b ) 
-		{
-			return -1;
-		}	
-		else if ( *(double*)a > *(double*)b )
-		{
-			return 1;
-		} 
-		else
-		{
-			return 0;
-		} 
-	}
-
 	SolverOutput::SolverOutput(Problem* prb, double runtime)
 	{
 		jobNumber = prb->getJobNumber();
 		machineNumber = prb->getMachineNumber();
 		makespan = 0;
 		minimumTime = DBL_MAX;
-		jobs = vector<vector<int>>(machineNumber);
-		processingTimes = vector<double>(machineNumber);
-		startingTimes = vector<double>(jobNumber);
-		endingTimes = vector<double>(jobNumber);
-		assignments = vector<int>(jobNumber);
-		conflicts = vector<vector<int>>(jobNumber);
-		double* t = prb->getLengths();
-		bool** conf = prb->getConflicts();
+		jobs = std::vector<std::vector<int>>(machineNumber);
+		processingTimes = std::vector<double>(machineNumber);
+		startingTimes = std::vector<double>(jobNumber);
+		endingTimes = std::vector<double>(jobNumber);
+		assignments = std::vector<int>(jobNumber);
+		conflicts = std::vector<std::vector<int>>(jobNumber);
+		auto t = prb->getLengths();
+		auto conf = prb->getConflicts();
 
 		for(int i = 0; i < jobNumber; i++)
 		{
@@ -74,21 +58,21 @@ namespace TxnSP
 		}
 	}
 
-	SolverOutput::SolverOutput(Problem* prb, int* state, double runtime)
+	SolverOutput::SolverOutput(Problem* prb, const std::vector<int>& state, double runtime)
 	{
 		jobNumber = prb->getJobNumber();
 		machineNumber = prb->getMachineNumber();        
-        jobs = vector<vector<int>>(machineNumber);
-		processingTimes = vector<double>(machineNumber);
-		startingTimes = vector<double>(jobNumber);
-		endingTimes = vector<double>(jobNumber);
-		assignments = vector<int>(jobNumber);
-		conflicts = vector<vector<int>>(jobNumber);
-		double* T = prb->getLengths();
-        bool** conf = prb->getConflicts();
-		int* coreNums = new int[machineNumber];
-		int* lastJobs = new int[machineNumber];
-		int* order = new int[machineNumber];
+        jobs = std::vector<std::vector<int>>(machineNumber);
+		processingTimes = std::vector<double>();
+		startingTimes = std::vector<double>(jobNumber);
+		endingTimes = std::vector<double>(jobNumber);
+		assignments = std::vector<int>(jobNumber);
+		conflicts = std::vector<std::vector<int>>(jobNumber);
+		auto T = prb->getLengths();
+        auto conf = prb->getConflicts();
+		std::vector<int> coreNums(machineNumber);
+		std::vector<int> lastJobs(machineNumber);
+		std::vector<int> order(machineNumber);
 
 		double temp;
 		int job;
@@ -172,30 +156,24 @@ namespace TxnSP
 		machineNumber = sch->getMachineNumber();
         makespan = sch->getMakespan();
 		minimumTime = sch->getMinimumTime();
-        jobs = vector<vector<int>>(machineNumber);
-		processingTimes = vector<double>(machineNumber);
-		startingTimes = vector<double>(jobNumber);
-		endingTimes = vector<double>(jobNumber);
-		assignments = vector<int>(jobNumber);
-		conflicts = vector<vector<int>>(jobNumber);
-        int* coreCount = new int[machineNumber];
-		int* tempLast = new int[machineNumber];
-        int* coreNums = sch->getJobNumbers();
-        //double* ccoreTimes = sch->getProcessingTimes();
-        int** schjobs = sch->getJobs();
-        bool** conf = prb->getConflicts();
-		double* T = prb->getLengths();
+        jobs = std::vector<std::vector<int>>(machineNumber);
+		processingTimes = std::vector<double>(machineNumber);
+		startingTimes = std::vector<double>(jobNumber);
+		endingTimes = std::vector<double>(jobNumber);
+		assignments = std::vector<int>(jobNumber);
+		conflicts = std::vector<std::vector<int>>(jobNumber);
+        std::vector<int> coreCount(machineNumber);
+		std::vector<int> tempLast(machineNumber);
+        auto conf = prb->getConflicts();
+		auto T = prb->getLengths();
 		double temp;	
 		int job;
 
+		jobs = sch->getJobs();
+
 		for(int i = 0; i < machineNumber; i++)
 		{
-			for(int j = 0; j < coreNums[i]; j++)
-			{
-				jobs[i].push_back(schjobs[i][j]);
-			}
-
-			job = schjobs[i][0];
+			job = jobs[i][0];
 			temp = 0;
 
 			for(int j = 0; j < i; j++)
@@ -228,7 +206,7 @@ namespace TxnSP
 
 		for(int i = machineNumber; i < jobNumber; i++)
 		{			
-			job = schjobs[minCore][coreCount[minCore]];
+			job = jobs[minCore][coreCount[minCore]];
 			temp = processingTimes[minCore];
 
 			for(int j = 0; j < machineNumber; j++)
@@ -260,9 +238,6 @@ namespace TxnSP
 			}
 		}
 
-        delete[] coreCount;
-		delete[] tempLast;
-
         for(int i = 0; i < jobNumber; i++)
 		{
 			for(int j = 0; j < jobNumber; j++)
@@ -275,23 +250,24 @@ namespace TxnSP
 		}
     }
 	
-	SolverOutput::SolverOutput(Problem* prb, int* x, double* s, double runtime) : runtime(runtime)
+	SolverOutput::SolverOutput(Problem* prb, const std::vector<int>& x, const std::vector<double>& s, double runtime)
+		: runtime(runtime)
 	{
 		jobNumber = prb->getJobNumber();
         machineNumber = prb->getMachineNumber();
-        jobs = vector<vector<int>>(machineNumber);
-		processingTimes = vector<double>(machineNumber);
-		startingTimes = vector<double>(jobNumber);
-		endingTimes = vector<double>(jobNumber);
-		assignments = vector<int>(jobNumber);
-		conflicts = vector<vector<int>>(jobNumber);
-		double* T = prb->getLengths();
-        bool** conf = prb->getConflicts();
+        jobs = std::vector<std::vector<int>>(machineNumber);
+		processingTimes = std::vector<double>(machineNumber);
+		startingTimes = std::vector<double>(jobNumber);
+		endingTimes = std::vector<double>(jobNumber);
+		assignments = std::vector<int>(jobNumber);
+		conflicts = std::vector<std::vector<int>>(jobNumber);
+		auto T = prb->getLengths();
+        auto conf = prb->getConflicts();
 
-		double* scpy = new double[jobNumber];
-		int* ind = new int[jobNumber];
-		bool* smt = new bool[jobNumber];
-        int* lastJobs = new int[machineNumber];
+		std::vector<double> scpy(jobNumber);
+		std::vector<int> ind(jobNumber);
+		std::vector<bool> smt(jobNumber);
+        std::vector<int> lastJobs(machineNumber);
         int minimumCore = 0;
 
 		for (int i = 0; i < jobNumber; i++)
@@ -302,7 +278,7 @@ namespace TxnSP
             assignments[i] = x[i];
 		}
 
-		std::qsort(scpy, jobNumber, sizeof(double), Comp);
+		std::sort(scpy.begin(), scpy.end());
 
 		for (int i = 0; i < jobNumber; i++)
 		{	
@@ -357,11 +333,6 @@ namespace TxnSP
 				makespan = processingTimes[i];
 			}
 		}
-
-		delete[] scpy;
-		delete[] ind;
-		delete[] smt;
-		delete[] lastJobs;
 	}
 
 	SolverOutput::~SolverOutput() { }
