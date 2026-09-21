@@ -1,20 +1,19 @@
 # TxnSP
-TxnSP is a software library used to create instances of the transaction scheduling problem and solving them. For this purpose, the library includes four solvers: `ESSolver` (the exhaustive search solver), `DPSolver` (the dynamic programming solver), `MIPSolver` (the mixed-integer programming solver), and `SASolver` (the simulated annealing solver). It also contains modules for analyzing the solution spaces of problem instances and evaluating the performance of the included solvers.
+TxnSP is a software library for creating and solving instances of the transaction scheduling problem. For this purpose, the library includes four solvers: `ESSolver` (the exhaustive search solver), `DPSolver` (the dynamic programming solver), `MIPSolver` (the mixed-integer programming solver), and `SASolver` (the simulated annealing solver). It also contains modules for analyzing the solution spaces of problem instances and evaluating the performance of the included solvers.
 
 ## Citation
-TxnSP is developed as a part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The study is presented in the paper given below.
+TxnSP was developed as part of a study on the transaction scheduling problem and its use in transaction-based optimizing multi-agent systems. The study is presented in the paper below.
 
 [OptiMA: A Transaction-Based Framework with Throughput Optimization for Very Complex Multi-Agent Systems](https://arxiv.org/pdf/2511.03761)
 
-### Version used in Paper
+### Version Used in the Paper
 
-The experiments reported in the paper were conducted using **TxnSP v1.0**.
-The exact version of the source code used for those experiments is archived here:
+The experiments reported in the paper were conducted using **TxnSP v1.0**. The exact version of the source code used for those experiments is archived here:
 
 **[TxnSP v1.0](https://github.com/umutcalikyilmaz/TxnSP/tree/v1.0)**
 
 ## Installation
-TxnSP is designed for Debian-based systems and currently it is not compatible with Windows or MacOS. For standard installation, the following bash instructions should be executed in the project's root folder.
+TxnSP requires a compiler with `C++20` support. It is designed for Debian-based systems and is currently not compatible with Windows or macOS. For a standard installation, execute the following commands in the project's root directory:
 
 ```bash
 mkdir build
@@ -23,7 +22,7 @@ cmake ..
 sudo make install
 ```
 
-Mixed-integer programming solver module (MIPSolver) is not included in the standard installation. To install the TxnSP library with MIPSolver, first the SCIP Optimization Suite must be installed from the **[link](https://www.scipopt.org/download.php?fname=scipoptsuite-8.0.2.tgz)**. Then the following bash insructions must be executed in the TxnSP project's root folder.
+The `MIPSolver` module is not included in the standard installation. To install the TxnSP library with `MIPSolver`, the **[SCIP Optimization Suite](https://www.scipopt.org/download.php?fname=scipoptsuite-8.0.2.tgz)** must first be installed. Then, execute the following commands in the TxnSP project's root directory:
 
 
 ```bash
@@ -36,27 +35,27 @@ sudo make install
 ## Usage
 
 ### Importing the Library
-After installing TxnSP, it can be imported to a project by adding the following lines in the CMakeLists.txt file.
+After installing TxnSP, it can be imported into a project by adding the following lines to the `CMakeLists.txt` file:
 
 ```cmake
 find_package(TxnSP REQUIRED)
 target_link_libraries(my_project TxnSP::txnsp)
 ```
 
-To use the problem instance creation and solver functionalities of TxnSP, the main header file should be included as below.
+To use the problem instance creation and solver functionalities of TxnSP, include the main header file as follows.
 
 ```c++
 #include <TxnSP/TxnSP.h>
 ```
 
-To also use the Analyzer and Evaluator modules, the following code should be used.
+To also use the Analyzer and Evaluator modules, include the following header:
 
 ```c++
 #include <TxnSP/TxnSPTest.h>
 ```
 
-### Problem Creation
-In TxnSP, a problem instance can be created in two ways. The first one is random creation, which uses either normal distribution or uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using Bernoulli distribution where the conflict parity is entered by the user. The below code shows random problem creation with normal and uniform distributions.
+### Problem Generation
+In TxnSP, a problem instance can be created in two ways. The first is random problem generation, which uses either a normal distribution or a uniform distribution to randomly generate the problem parameters. In both cases, the conflict matrix is generated using a Bernoulli distribution, where the conflict probability is specified by the user. The following examples show random problem creation using normal and uniform distributions.
 
 ```c++
 // Problem creation using normal distribution
@@ -66,7 +65,7 @@ TxnSP::Problem problem(
     TxnSP::ProbabilityDistribution::Normal,    // enum: Distribution type
     lengthMean,                                // double: Mean of job lengths
     lengthStd,                                 // double: Standard deviation of job lengths
-    conflictParity                             // double: Parity of conflicting pair of jobs
+    conflictParity                             // double: Probability that any pair of jobs conflicts
 );
 ```
 
@@ -78,26 +77,26 @@ TxnSP::Problem problem(
     TxnSP::ProbabilityDistribution::Uniform,   // enum: Distribution type
     lowerLimit,                                // double: Lower limit of job lengths
     upperLimit,                                // double: Upper limit of job lengths
-    conflictParity                             // double: Parity of conflicting pair of jobs
+    conflictParity                             // double: Probability that any pair of jobs conflicts
 );
 ```
 
-TxnSP also allows creating custom problems by providing the array of lengths and the matrix of conflicts as shown below.
+TxnSP also allows custom problem instances to be created by providing a vector of job lengths and a conflict matrix, as shown below.
 
 ```c++
 // Custom problem creation
 TxnSP::Problem problem(
     jobCount,          // int: Number of jobs
     machineCount,      // int: Number of machines
-    lengths,           // std::vector<double>: Array of job lengths
+    lengths,           // std::vector<double>: Job lengths
     conflicts          // std::vector<std::vector<uint8_t>>: Conflict matrix
 );
 ```
 
 ### Problem Solution
-After a problem instance is created using one of the explained methods, it can be solved using one of the four solvers provided by TxnSP library. Usage of each solver is given below.
+After a problem instance has been created using one of the methods described above, it can be solved using one of the four solvers provided by the TxnSP library. Examples of using each solver are shown below.
 
-#### Dynamic Programming:
+#### Dynamic Programming
 ```c++
 // Create the dynamic programming solver
 TxnSP::DPSolver dps;
@@ -105,13 +104,13 @@ TxnSP::DPSolver dps;
 // Prepare the input structure
 TxnSP::SolverInput input;
 input.prb = &problem;                                    // Assign a pointer to the problem instance
-input.DP_SolutionType = TxnSP::SolutionType::Exact;      // Use exact solution method, other option is TxnnSP::Approximate
+input.DP_SolutionType = TxnSP::SolutionType::Exact;      // Use the exact solution method, other option is TxnSP::SolutionType::Approximate
 
 // Solve the problem and get the output
 TxnSP::SolverOutput output = dps.solve(input);    // Returns a struct containing solution details
 ```
 
-#### Exhaustive Search:
+#### Exhaustive Search
 ```c++
 // Create the exhaustive search solver
 TxnSP::ESSolver ess;
@@ -125,7 +124,7 @@ TxnSP::SolverOutput output = ess.solve(input);  // Returns a struct containing s
 ```
 
 
-#### Mixed-Integer Programming:
+#### Mixed-Integer Programming
 ```c++
 // Create the mixed-integer programming solver
 TxnSP::MIPSolver mips;
