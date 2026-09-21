@@ -15,7 +15,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
 
-option(ENABLE_MIP "Enable building the MIPSolver module (requires the third-party library SCIP)" ON)
+option(ENABLE_MIP "Enable building the MIPSolver module (requires the third-party library SCIP)" OFF)
 
 if(ENABLE_MIP)
 
@@ -29,7 +29,7 @@ if(ENABLE_MIP)
 
 endif()
 
-set(SOURCE_FILES main.cpp src/PoolingModels/SchedulePool.cpp src/PoolingModels/SubsetPool.cpp
+set(SOURCE_FILES src/PoolingModels/SchedulePool.cpp src/PoolingModels/SubsetPool.cpp
 src/ProblemModels/Problem.cpp src/ProblemModels/Schedule.cpp src/ProblemModels/Subset.cpp src/Shared/SharedModels.cpp
 src/Solvers/DPSolver.cpp src/Solvers/ESSolver.cpp src/Solvers/SASolver.cpp src/Structs/SolverOutput.cpp src/Testers/Analyzer.cpp
 src/Testers/Evaluator.cpp)
@@ -38,8 +38,7 @@ if(ENABLE_MIP)
   list(APPEND SOURCE_FILES src/Solvers/MIPSolver.cpp)
 endif()
 
-#add_library(${BINARY_NAME} SHARED ${SOURCE_FILES})
-add_executable(${BINARY_NAME} ${SOURCE_FILES})
+add_library(${BINARY_NAME} SHARED ${SOURCE_FILES})
 set_property(TARGET ${BINARY_NAME} PROPERTY CXX_STANDARD 20)
 
 target_include_directories(${BINARY_NAME}
